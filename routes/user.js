@@ -38,6 +38,7 @@ router.post('/', async (req, res) => {
         res.status(201)
         res.json({ result: true, token: newUser.token, message: `User ${newUser.email} created` })
     } catch (error) {
+        // Error 400 if model datas aren't validate
         res.status(400)
         res.json({ result: false, error})
         return

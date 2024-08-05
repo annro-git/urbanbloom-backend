@@ -1,17 +1,65 @@
 const mongoose = require('mongoose')
 
 const UserSchema = mongoose.Schema({
-    email: String,
-    token: String,
-    password: String,
+    email: {
+        type: String,
+        required: [true, 'Missing email'],
+        lowercase: true,
+        validate: {
+            validator: (value) => /\S+@\S+\.\S+/.test(value),
+            message: 'Invalid email'
+        }
+    },
+    password: {
+        type: String,
+        required: [true, 'Missing password']
+    },
+    token: {
+        type: String,
+        required: [true, 'Missing token'],
+        minlength: 32,
+        maxlength: 32
+    },
+    ppURI : {
+        type: String,
+        lowercase: true,
+        validate: {
+            validator: (value) => /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/.test(value),
+            message: 'Invalid profile picture uri'
+        },
+        default: 'https://upload.wikimedia.org/wikipedia/commons/5/50/User_icon-cp.svg' // TODO : replace placeholder
+    },
+    gardens: {
+        type: Array,
+        of: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'gardens'
+        }
+    },
+    posts: {
+        type: Array,
+        of: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'posts'
+        }
+    },
+    events: {
+        type: Array,
+        of: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'events'
+        }
+    },
+    privacy: {
+        type: Boolean,
+        default: true,
+    },
+    isAdmin: {
+        type: Boolean,
+        default: false,
+    },
     firstname: String,
     lastname: String,
-    ppURI: String,
-    gardens: Array, // ! of garden objectId
-    posts: Array, // ! of post objectId
-    events: Array, // ! of event objectId
-    privacy: Boolean,
-    idAdmin: Boolean,
 })
 
 const User = mongoose.model('users', UserSchema)

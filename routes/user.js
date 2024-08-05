@@ -2,8 +2,7 @@ const express = require('express')
 const router = express.Router()
 const User = require('../models/user')
 const uid2 = require('uid2');
-
-
+const bcrypt = require('bcrypt');
 
 router.get('/', (req, res) => {
     User.find()
@@ -11,6 +10,7 @@ router.get('/', (req, res) => {
             res.json({ result: true, users: data })
         })
 });
+
 
 router.post('/register', (req, res) => {
     const { firstname, lastname, email, password, username } = req.body
@@ -25,6 +25,7 @@ router.post('/register', (req, res) => {
             res.json({ result: false, error: error })
         })
 });
+
 
 router.post('/login', (req, res) => {
 
@@ -42,14 +43,5 @@ router.post('/login', (req, res) => {
             res.json({ result: false, error: error })
         })
 });
-
-
-
-
-
-
-
-
-
 
 module.exports = router

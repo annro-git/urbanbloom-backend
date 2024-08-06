@@ -46,7 +46,6 @@ router.put('/update/:owner/:title', (req, res) => {
         .catch(error => res.json({ message: error }))
 });
 
-router.put('update')
 router.delete('/delete/:title', (req, res) => {
     Post.findOneAndDelete({ title: req.params.title })
         .then(data => res.json({ result: true, data }))

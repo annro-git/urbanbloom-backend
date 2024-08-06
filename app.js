@@ -1,4 +1,5 @@
 require('dotenv').config()
+require('./models/connection')
 
 require('./models/connection')
 const express = require('express')

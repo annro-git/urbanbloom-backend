@@ -3,14 +3,18 @@ const router = express.Router()
 const Post = require('../models/post')
 
 router.post('/create', (req, res) => {
+
+    const { owner, garden, text, pictures, replies, title, likes } = req.body
+
     const post = new Post({
-        owner: req.body.owner,
-        garden: req.body.garden,
-        text: req.body.text,
-        pictures: req.body.pictures,
-        replies: req.body.replies,
-        title: req.body.title,
-        likes: req.body.likes
+        owner,
+        garden,
+        text,
+        pictures,
+        replies,
+        createdAt: Date.now(),
+        title,
+        likes
     })
     post.save()
         .then(data => res.json({result: true, data}))

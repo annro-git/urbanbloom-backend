@@ -71,6 +71,29 @@ router.delete('/:token', async (req, res) => {
 
 })
 
+/* Get garden list from an User */
+router.get('/garden/:token', async (req, res) => {
+    const { token } = req.params
+
+    // Error 400 if token is missing
+    if(checkReq([token])){
+        res.status(400)
+        res.json({ result: false, error: 'Missing token' })
+        return
+    }
+
+    const response = await User.findOne({ token })
+    // Error 404 if token doesn't exist
+    if(!response){
+        res.status(404)
+        res.json({ result: false, error: 'User not found' })
+        return
+    }
+
+    res.json({ result: true, gardens: response.gardens })
+
+})
+
 /* Toggle Garden to an User */
 router.put('/garden/:id', async (req, res) => {
     const { id } = req.params

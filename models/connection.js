@@ -1,7 +1,9 @@
-const mongoose = require('mongoose');
+const mongoose = require('mongoose')
 
-const connectionString = "<connection-string>urbanbloom";
-
-mongoose.connect(connectionString, { connectTimeoutMS: 2000 })
-  .then(() => console.log('Database connected'))
-  .catch(error => console.error(error));
+mongoose.connect(process.env.CONNECTION_STRING, {
+    serverSelectionTimeoutMS: 1000,
+    user: process.env.DB_LOGIN,
+    pass: process.env.DB_PASSWORD
+})
+    .then(() => console.log('Connecté à Atlas'))
+    .catch(error => console.error(error))

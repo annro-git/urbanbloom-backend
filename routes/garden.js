@@ -11,7 +11,7 @@ const strToArr = (str) => str.replace(/\[|\]|\'|\"/g, '').split(',').map(e => e.
 router.post('/', async (req, res) => {
     const { latitude, longitude, name, description, token, interests, bonus } = req.body
 
-    // Error 400 if email or password are missing
+    // Error 400 if value is missing
     if(checkReq([latitude, longitude, name, description, token, interests, bonus])){
         res.status(400)
         res.json({ result: false, error: 'Missing or empty fields'})
@@ -52,6 +52,59 @@ router.post('/', async (req, res) => {
     } catch (error) {
         res.status(400)
         res.json({ result: false, error})
+        return
+    }
+
+})
+
+/* Create a post */
+router.post('/:id/post/', async (req, res) => {
+    const { id } = req.params
+    const { token, title, text, pictures } = req.body
+
+    // Error 400 if value is missing
+    if(checkReq([id, token, title, text, pictures])){
+        res.status(400)
+        res.json({ result: false, error: 'Missing or empty fields'})
+        return
+    }
+
+    // Error 404 if garden doesn't exist
+    const isGarden = await Garden.findById(id)
+    if(!isGarden){
+        res.status(404)
+        res.json({ result: false, error: 'Garden not found' })
+        return
+    }
+
+    // Error 404 if user doesn't exist
+    const postOwner = await User.findOne({ token })
+    if(!postOwner){
+        res.status(404)
+        res.json({ result: false, error: 'User not found' })
+        return
+    }
+
+    // Error 403 if user is not a garden member
+    const isMember = await Garden.findOne({ members: postOwner._id })
+    if(!isMember){
+        res.status(403)
+        res.json({ result: false, error: 'User is not a member'})
+    }
+
+    const newPost = {
+        owner: isMember._id,
+        title,
+        text,
+        pictures,
+    }
+    try {
+        await Garden.updateOne({ _id: id }, { $push: { posts: newPost }})
+        res.status(201)
+        res.json({ result: true, message: 'Post created'})
+    } catch (error) {
+        res.status(400)
+        res.json({ result: false, error })
         return
     }
 

@@ -19,8 +19,8 @@ router.post('/', async (req, res) => {
     }
 
     // Error 409 if email already exists
-    const isExists = await User.findOne({ email : String(email).toLowerCase() })
-    if(isExists){
+    const isUsed = await User.findOne({ email : String(email).toLowerCase() })
+    if(isUsed){
         res.status(409)
         res.json({ result: false, error: 'Email already exists'})
         return

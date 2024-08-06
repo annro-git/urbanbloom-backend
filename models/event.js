@@ -40,4 +40,8 @@ const EventSchema = mongoose.Schema({
         default: Date.now,
         required: [true, 'Missing creation date'],
     }
-})
+});
+
+
+const Event = mongoose.model('events', EventSchema);
+module.exports = Event;

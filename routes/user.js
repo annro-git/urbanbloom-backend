@@ -3,6 +3,7 @@ const User = require('../models/users')
 const Garden = require('../models/gardens')
 const uid2 = require('uid2');
 const bcrypt = require('bcrypt');
+const { isObjectIdOrHexString } = require('mongoose');
 const router = express.Router()
 
 const checkReq = (keys) => keys.some(e => !e)
@@ -79,13 +80,15 @@ router.put('/garden/:id', async (req, res) => {
     if(checkReq([id, token])){
         res.status(400)
         res.json({ result: false, error: 'Missing or empty fields'})
+        return
     }
 
-    // Error 404 if garden doesn't exist
-    const isGardenExists = await Garden.findOne({ _id }) // TODO : make garden routes
-    if(!isGardenExists){
-        res.status(404)
-        res.json({ result: false, error: 'Garden not found' })
+    try {
+        await Garden.findById(id)
+    } catch (error) {
+        // Error 400 if garden objectid isn't validated
+        res.status(400)
+        res.json({ result: false, error})
         return
     }
 
@@ -97,8 +100,15 @@ router.put('/garden/:id', async (req, res) => {
         return
     }
 
-    const userGardens = currentUser.userGarden
-    res.json({ result: true, message: userGardens })
+    if(currentUser.gardens.some(e => String(e) === id)){
+        await User.findOneAndUpdate({ token }, { gardens: [...currentUser.gardens.filter(e => String(e) !== id)] })
+        res.json({ result: true, message: `Garden ${ id } removed`})
+        return
+    } else {
+        await User.findOneAndUpdate({ token }, { gardens: [...currentUser.gardens, id] })
+        res.json({ result: true, message: `Garden ${ id } added`})
+        return
+    }
 
 })
 

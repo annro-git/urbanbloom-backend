@@ -39,12 +39,14 @@ router.get('/search/:title', (req, res) => {
         .catch(error => res.json({message: error}))
 });
 
-router.put('/update/:owner', (req, res) => {
-    Post.findByIdAndUpdate(req.params.owner, {likes: req.body.likes})
+router.put('/update/:owner/:title', (req, res) => {
+    const { owner, title } = req.params
+    Post.findOneAndUpdate({owner, title}, {likes: req.body.likes})
         .then(data => res.json({result: true, data}))
         .catch(error => res.json({message: error}))
 });
 
+router.put('update')
 router.delete('/delete/:title', (req, res) => {
     Post.findOneAndDelete({title: req.params.title})
         .then(data => res.json({result: true, data}))

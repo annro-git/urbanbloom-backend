@@ -1,8 +1,11 @@
 const express = require('express')
 const router = express.Router()
 const User = require('../models/user')
+const Event = require('../models/event')
 const uid2 = require('uid2');
 const bcrypt = require('bcrypt');
+
+const checkReq = (keys) => keys.some(e => !e)
 
 router.get('/', (req, res) => {
     User.find()
@@ -43,5 +46,30 @@ router.post('/login', (req, res) => {
             res.json({ result: false, error: error })
         })
 });
+
+router.get('/event/:userid', async (req, res) => {
+    const { userid } = req.params
+    const { token } = req.body
+
+    if(checkReq([userid, token])){
+        res.status(400)
+        res.json({ result: false, error: 'Missing or empty fields'})
+        return
+    }
+
+    try {
+        const data = await Event.findById(userid)
+        res.json({ result: true, events: data })
+    } catch (error) {
+        // Error 400 if garden objectid isn't validated
+        res.status(400)
+        res.json({ result: false, error})
+        return
+    }
+});
+
+    
+
+
 
 module.exports = router

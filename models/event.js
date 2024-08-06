@@ -4,38 +4,40 @@ const mongoose = require('mongoose');
 const EventSchema = mongoose.Schema({
     title: {
         type: String,
-        required: [true, 'Missing name'],
+        required: [true, 'Missing title'],
     },
     description: {
         type: String,
         required: [true, 'Missing description'],
     },
     owner: {
-        type: Date,
-        required: [true, 'Missing date'],
+        type: Number,
+        of: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'users'
+        }
     },
     garden: {
-        type: String,
-        required: [true, 'Missing location'],
+        type: Number,
+        of: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'gardens'
+        }
     },
-    subscribers : {
-        type: String,
-        lowercase: true,
-        validate: {
-            validator: (value) => /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/.test(value),
-            message: 'Invalid profile picture uri'
-        },
-        default: 'https://upload.wikimedia.org/wikipedia/commons/5/50/User_icon-cp.svg' // TODO : replace placeholder
-    },
-    date: {
+    subscribers: {
         type: Array,
         of: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'users'
         }
     },
+    date: {
+        type: Date,
+        required: [true, 'Missing date'],
+    },
     createdAt: {
         type: Date,
-        default: Date.now
+        default: Date.now,
+        required: [true, 'Missing creation date'],
     }
 })

@@ -1,13 +1,19 @@
 const mongoose = require('mongoose');
 
-const postSchema = new mongoose.Schema({
+const PostSchema = new mongoose.Schema({
     owner: {
         type: String,
-        equired: true
+        of: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'users'
+        }
     },
     garden: {
         type: String,
-        required: true
+        of: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'gardens'
+        }
     },
     text: {
         type: String,
@@ -15,11 +21,14 @@ const postSchema = new mongoose.Schema({
     },
     pictures: {
         type: [String],
-        required: true
+        default: []
     },
     replies: {
         type: [Number],
-        required: true
+        of: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'replies'
+        }
     },
     createdAt: {
         type: Date,
@@ -35,6 +44,6 @@ const postSchema = new mongoose.Schema({
     },
 });
 
-const Post = mongoose.model('Post', postSchema);
+const Post = mongoose.model('Post', PostSchema);
 module.exports = Post;
 

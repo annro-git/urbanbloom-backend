@@ -1,5 +1,113 @@
 const mongoose = require('mongoose')
 
+const PostSchema = mongoose.Schema({
+    owner: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'users',
+        required: [true, 'Missing owner']
+    },
+    createdAt: {
+        type: Date,
+        default: new Date()
+    },
+    title: {
+        type: String,
+        maxlength: 80,
+        required: [true, 'Missing title']
+    },
+    text: {
+        type: String,
+        maxlength: 500,
+        required: [true, 'Missing content']
+    },
+    pictures: {
+        type: Array,
+        of: {
+            type: String,
+            lowercase: true,
+            validate: {
+                validator: (value) => /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/.test(value),
+                message: 'Invalid profile picture uri'
+            },
+        }
+    },
+    likes: [LikesSchema],
+    replies: [ReplySchema]
+})
+
+const EventSchema = mongoose.Schema({
+    owner: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'users',
+        required: [true, 'Missing owner']
+    },
+    createdAt: {
+        type: Date,
+        default: new Date()
+    },
+    date: {
+        type: Date,
+        required: [true, 'Missing date']
+    },
+    title: {
+        type: String,
+        maxlength: 80,
+        required: [true, 'Missing title']
+    },
+    text: {
+        type: String,
+        maxlength: 500,
+        required: [true, 'Missing content']
+    },
+    pictures: {
+        type: Array,
+        of: {
+            type: String,
+            lowercase: true,
+            validate: {
+                validator: (value) => /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/.test(value),
+                message: 'Invalid profile picture uri'
+            },
+        }
+    },
+    subscribers: {
+        type: Array,
+        of: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'users',
+        }
+    }
+})
+
+const ReplySchema = mongoose.Schema({
+    owner: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'users',
+        required: [true, 'Missing owner']
+    },
+    createdAt: {
+        type: Date,
+        default: new Date()
+    },
+    text: {
+        type: String,
+        maxlength: 500,
+        required: [true, 'Missing content']
+    }
+})
+
+const LikesSchema = mongoose.Schema({
+    owner: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'users',
+        required: [true, 'Missing owner']
+    },
+    likeType: {
+        type: String,
+        enum: ['thumb', 'tree', 'sun', 'heart']
+    }
+})
+
 const GardenSchema = mongoose.Schema({
     coordinates: {
         latitude: {
@@ -33,20 +141,8 @@ const GardenSchema = mongoose.Schema({
         required: [true, 'Missing description'],
         maxlength: 300,
     },
-    posts: {
-        type: Array,
-        of: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'posts'
-        }
-    },
-    events: {
-        type: Array,
-        of: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'events'
-        }
-    },
+    posts: [PostSchema],
+    events: [EventSchema],
     members: {
         type: Array,
         of: {

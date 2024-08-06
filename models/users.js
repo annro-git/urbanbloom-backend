@@ -36,20 +36,6 @@ const UserSchema = mongoose.Schema({
             ref: 'gardens'
         }
     },
-    posts: {
-        type: Array,
-        of: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'posts'
-        }
-    },
-    events: {
-        type: Array,
-        of: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'events'
-        }
-    },
     privacy: {
         type: Boolean,
         default: true,

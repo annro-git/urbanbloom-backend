@@ -20,7 +20,7 @@ const UserSchema = mongoose.Schema({
         minlength: 32,
         maxlength: 32
     },
-    ppURI : {
+    ppURI: {
         type: String,
         lowercase: true,
         validate: {

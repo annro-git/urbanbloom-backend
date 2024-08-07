@@ -58,19 +58,19 @@ router.post('/', async (req, res) => {
 })
 
 /* Create a Post */
-router.post('/:id/post/', async (req, res) => {
-    const { id } = req.params
+router.post('/:gardenId/post/', async (req, res) => {
+    const { gardenId } = req.params
     const { token, title, text, pictures } = req.body
 
     // Error 400 if value is missing
-    if(checkReq([id, token, title, text, pictures])){
+    if(checkReq([gardenId, token, title, text, pictures])){
         res.status(400)
         res.json({ result: false, error: 'Missing or empty fields'})
         return
     }
 
     // Error 404 if garden doesn't exist
-    const isGarden = await Garden.findById(id)
+    const isGarden = await Garden.findById(gardenId)
     if(!isGarden){
         res.status(404)
         res.json({ result: false, error: 'Garden not found' })
@@ -100,7 +100,7 @@ router.post('/:id/post/', async (req, res) => {
         pictures,
     }
     try {
-        await Garden.updateOne({ _id: id }, { $push: { posts: newPost }})
+        await Garden.updateOne({ _id: gardenId }, { $push: { posts: newPost }})
         res.status(201)
         res.json({ result: true, message: 'Post created'})
     } catch (error) {
@@ -111,20 +111,80 @@ router.post('/:id/post/', async (req, res) => {
 
 })
 
-/* Create an Event */
-router.post('/:id/event/', async (req, res) => {
-    const { id } = req.params
-    const { token, title, text, pictures, date } = req.body
+/* Create a reply to a post */
+router.post('/:gardenId/post/:postId', async (req, res) => {
+    const { gardenId, postId} = req.params
+    const { token, text } = req.body
 
     // Error 400 if value is missing
-    if(checkReq([id, token, title, text, pictures, date])){
+    if(checkReq([gardenId, postId, token, text])){
         res.status(400)
         res.json({ result: false, error: 'Missing or empty fields'})
         return
     }
 
     // Error 404 if garden doesn't exist
-    const isGarden = await Garden.findById(id)
+    const isGarden = await Garden.findById(gardenId)
+    if(!isGarden){
+        res.status(404)
+        res.json({ result: false, error: 'Garden not found' })
+        return
+    }
+
+    // Error 404 if post doesn't exist
+    const isPost = isGarden.posts.find(e => String(e._id) === postId)
+    if(!isPost){
+        res.status(404)
+        res.json({ result: false, error: 'Post not found' })
+    }
+
+    // Error 404 if user doesn't exist
+    const replyOwner = await User.findOne({ token })
+    if(!replyOwner){
+        res.status(404)
+        res.json({ result: false, error: 'User not found' })
+        return
+    }
+
+    // Error 403 if user is not a garden member
+    const isMember = await Garden.findOne({ members: replyOwner._id })
+    if(!isMember){
+        res.status(403)
+        res.json({ result: false, error: 'User is not a member'})
+        return
+    }
+
+    const newReply = {
+        owner: isMember._id,
+        text,
+        date: new Date(),
+    }
+    try {
+        isPost.replies.push(newReply)
+        await isGarden.save()
+        res.json({ result: true, message: `Reply added to post ${ postId }`})
+    } catch (error) {
+        res.status(400)
+        res.json({ result: false, error })
+        return
+    }
+    
+})
+
+/* Create an Event */
+router.post('/:gardenId/event/', async (req, res) => {
+    const { gardenId } = req.params
+    const { token, title, text, pictures, date } = req.body
+
+    // Error 400 if value is missing
+    if(checkReq([gardenId, token, title, text, pictures, date])){
+        res.status(400)
+        res.json({ result: false, error: 'Missing or empty fields'})
+        return
+    }
+
+    // Error 404 if garden doesn't exist
+    const isGarden = await Garden.findById(gardenId)
     if(!isGarden){
         res.status(404)
         res.json({ result: false, error: 'Garden not found' })
@@ -155,7 +215,7 @@ router.post('/:id/event/', async (req, res) => {
         date: new Date(),
     }
     try {
-        await Garden.updateOne({ _id: id }, { $push: { events: newEvent }})
+        await Garden.updateOne({ _id: gardenId }, { $push: { events: newEvent }})
         res.status(201)
         res.json({ result: true, message: 'Event created'})
     } catch (error) {

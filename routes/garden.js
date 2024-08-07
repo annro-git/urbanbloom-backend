@@ -6,8 +6,7 @@ const router = express.Router()
 const checkReq = (keys) => keys.some(e => !e)
 const strToArr = (str) => str.replace(/\[|\]|\'|\"/g, '').split(',').map(e => e.trim())
 
-/* Create a Garden */
-
+// * Create a Garden
 router.post('/', async (req, res) => {
     const { latitude, longitude, name, description, token, interests, bonus } = req.body
 
@@ -57,7 +56,7 @@ router.post('/', async (req, res) => {
 
 })
 
-/* Create a Post */
+// * Create a Post
 router.post('/:gardenId/post/', async (req, res) => {
     const { gardenId } = req.params
     const { token, title, text, pictures } = req.body
@@ -111,7 +110,7 @@ router.post('/:gardenId/post/', async (req, res) => {
 
 })
 
-/* Get Posts from a Garden */
+// * Get Garden Posts
 router.get('/:gardenId/posts', async (req, res) => {
     const { gardenId } = req.params
     const { token } = req.body
@@ -151,7 +150,7 @@ router.get('/:gardenId/posts', async (req, res) => {
 
 })
 
-/* Create a reply to a post */
+// * Create Post Reply
 router.post('/:gardenId/post/:postId', async (req, res) => {
     const { gardenId, postId } = req.params
     const { token, text } = req.body
@@ -211,7 +210,7 @@ router.post('/:gardenId/post/:postId', async (req, res) => {
     
 })
 
-/* Get replies from a post */
+// * Get Garden Post Replies
 router.get('/:gardenId/post/:postId', async (req, res) => {
     const { gardenId, postId } = req.params
     const { token } = req.body
@@ -258,7 +257,7 @@ router.get('/:gardenId/post/:postId', async (req, res) => {
 
 })
 
-/* Create an Event */
+// * Create an Event
 router.post('/:gardenId/event/', async (req, res) => {
     const { gardenId } = req.params
     const { token, title, text, pictures, date } = req.body
@@ -310,6 +309,46 @@ router.post('/:gardenId/event/', async (req, res) => {
         res.json({ result: false, error })
         return
     }
+
+})
+
+// * Get Garden Events
+router.get('/:gardenId/events', async (req, res) => {
+    const { gardenId } = req.params
+    const { token } = req.body
+
+    // Error 400 if value is missing
+    if(checkReq([gardenId, token])){
+        res.status(400)
+        res.json({ result: false, error: 'Missing or empty fields'})
+        return
+    }
+
+    // Error 404 if garden doesn't exist
+    const isGarden = await Garden.findById(gardenId)
+    if(!isGarden){
+        res.status(404)
+        res.json({ result: false, error: 'Garden not found' })
+        return
+    }
+
+    // Error 404 if user doesn't exist
+    const replyOwner = await User.findOne({ token })
+    if(!replyOwner){
+        res.status(404)
+        res.json({ result: false, error: 'User not found' })
+        return
+    }
+
+    // Error 403 if user is not a garden member
+    const isMember = await Garden.findOne({ members: replyOwner._id })
+    if(!isMember){
+        res.status(403)
+        res.json({ result: false, error: 'User is not a member'})
+        return
+    }
+
+    res.json({ result: true, events: isGarden.events })
 
 })
 

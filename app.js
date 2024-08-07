@@ -10,7 +10,6 @@ const logger = require('morgan')
 const indexRouter = require('./routes/index')
 const userRouter = require('./routes/user')
 const postRouter = require('./routes/post')
-
 const cors = require('cors')
 const app = express()
 

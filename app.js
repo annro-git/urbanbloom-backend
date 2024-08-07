@@ -10,6 +10,7 @@ const logger = require('morgan')
 const indexRouter = require('./routes/index')
 const userRouter = require('./routes/user')
 const postRouter = require('./routes/post')
+const gardenRouter = require('./routes/garden')
 const cors = require('cors')
 const app = express()
 
@@ -23,5 +24,6 @@ app.use(express.static(path.join(__dirname, 'public')))
 app.use('/', indexRouter)
 app.use('/user', userRouter)
 app.use('/post', postRouter)
+app.use('/garden', gardenRouter)
 
 module.exports = app

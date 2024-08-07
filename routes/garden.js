@@ -93,7 +93,7 @@ router.post('/:gardenId/post/', async (req, res) => {
     }
 
     const newPost = {
-        owner: isMember._id,
+        owner: postOwner._id,
         title,
         text,
         pictures,

@@ -7,7 +7,7 @@ const router = express.Router()
 
 const checkReq = (keys) => keys.some(e => !e)
 
-/* Create an User */
+// * Create an User
 router.post('/', async (req, res) => {
     const { email, password, firstname, lastname} = req.body
 
@@ -47,9 +47,10 @@ router.post('/', async (req, res) => {
     }
 })
 
-/* Delete an User by token */ // TODO : remove all reference in gardens (posts, replies, events)
-router.delete('/:token', async (req, res) => {
-    const { token } = req.params
+// * Delete an User by token
+// TODO : remove all reference in gardens (posts, replies, events)
+router.delete('/', async (req, res) => {
+    const { token } = req.body
 
     // Error 400 if email is missing
     if(checkReq([token])){
@@ -70,9 +71,9 @@ router.delete('/:token', async (req, res) => {
 
 })
 
-/* Get garden list from an User */
-router.get('/garden/:token', async (req, res) => {
-    const { token } = req.params
+// * Get User Gardens
+router.get('/gardens', async (req, res) => {
+    const { token } = req.body
 
     // Error 400 if token is missing
     if(checkReq([token])){
@@ -93,7 +94,7 @@ router.get('/garden/:token', async (req, res) => {
 
 })
 
-/* Toggle Garden to an User */
+// * Toggle a User Garden
 router.put('/garden/:id', async (req, res) => {
     const { id } = req.params
     const { token } = req.body
@@ -131,8 +132,37 @@ router.put('/garden/:id', async (req, res) => {
         res.json({ result: true, message: `Garden ${ id } added`})
         return
     }
+})
 
+// * Get User Posts
+router.get('/posts/', async (req, res) => {
+    const { token } = req.body
 
+    // Error 400 if token is missing
+    if(checkReq([token])){
+        res.status(400)
+        res.json({ result: false, error: 'Missing or empty fields'})
+        return
+    }
+
+    // Error 404 if user doesn't exist
+    const user = await User.findOne({ token })
+    if(!user){
+        res.status(404)
+        res.json({ result: false, error: 'User not found' })
+        return
+    }
+
+    const { gardens } = user
+    await user.populate('gardens')
+    const posts = gardens.map(garden => {
+        return ({
+            name: garden.name,
+            id: garden._id,
+            posts: garden.posts.filter(post => String(post.owner) === String(user._id))
+        })
+    })
+    res.json({ result: true, data: posts})
 
 })
 

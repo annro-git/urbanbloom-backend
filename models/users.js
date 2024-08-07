@@ -36,6 +36,9 @@ const UserSchema = mongoose.Schema({
             ref: 'gardens'
         }
     },
+    bio: {
+        type: String,
+    },
     privacy: {
         type: Boolean,
         default: true,

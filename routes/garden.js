@@ -211,6 +211,53 @@ router.post('/:gardenId/post/:postId', async (req, res) => {
     
 })
 
+/* Get replies from a post */
+router.get('/:gardenId/post/:postId', async (req, res) => {
+    const { gardenId, postId } = req.params
+    const { token } = req.body
+
+    // Error 400 if value is missing
+    if(checkReq([gardenId, postId, token])){
+        res.status(400)
+        res.json({ result: false, error: 'Missing or empty fields'})
+        return
+    }
+
+    // Error 404 if garden doesn't exist
+    const isGarden = await Garden.findById(gardenId)
+    if(!isGarden){
+        res.status(404)
+        res.json({ result: false, error: 'Garden not found' })
+        return
+    }
+
+    // Error 404 if post doesn't exist
+    const isPost = isGarden.posts.find(e => String(e._id) === postId)
+    if(!isPost){
+        res.status(404)
+        res.json({ result: false, error: 'Post not found' })
+    }
+
+    // Error 404 if user doesn't exist
+    const replyOwner = await User.findOne({ token })
+    if(!replyOwner){
+        res.status(404)
+        res.json({ result: false, error: 'User not found' })
+        return
+    }
+
+    // Error 403 if user is not a garden member
+    const isMember = await Garden.findOne({ members: replyOwner._id })
+    if(!isMember){
+        res.status(403)
+        res.json({ result: false, error: 'User is not a member'})
+        return
+    }
+
+    res.json({ result: true, replies: isPost.replies })
+
+})
+
 /* Create an Event */
 router.post('/:gardenId/event/', async (req, res) => {
     const { gardenId } = req.params

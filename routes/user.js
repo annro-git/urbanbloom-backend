@@ -47,7 +47,7 @@ router.post('/', async (req, res) => {
     }
 })
 
-/* Delete an User by token */
+/* Delete an User by token */ // TODO : remove all reference in gardens (posts, replies, events)
 router.delete('/:token', async (req, res) => {
     const { token } = req.params
 

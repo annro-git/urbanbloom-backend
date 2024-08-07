@@ -51,9 +51,9 @@ router.get('/event/:userid', async (req, res) => {
     const { userid } = req.params
     const { token } = req.body
 
-    if(checkReq([userid, token])){
+    if (checkReq([userid, token])) {
         res.status(400)
-        res.json({ result: false, error: 'Missing or empty fields'})
+        res.json({ result: false, error: 'Missing or empty fields' })
         return
     }
 
@@ -63,12 +63,12 @@ router.get('/event/:userid', async (req, res) => {
     } catch (error) {
         // Error 400 if garden objectid isn't validated
         res.status(400)
-        res.json({ result: false, error})
+        res.json({ result: false, error })
         return
     }
 });
 
-    
+
 
 
 

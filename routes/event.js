@@ -1,6 +1,6 @@
 const express = require('express')
 const router = express.Router()
-const Event = require('../models/event')
+const Event = require('../models/events')
 
 router.post('/new', (req, res) => {
 

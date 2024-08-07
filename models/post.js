@@ -1,5 +1,34 @@
 const mongoose = require('mongoose');
 
+const ReplySchema = mongoose.Schema({
+    owner: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'users',
+        required: [true, 'Missing owner']
+    },
+    createdAt: {
+        type: Date,
+        default: new Date()
+    },
+    text: {
+        type: String,
+        maxlength: 500,
+        required: [true, 'Missing content']
+    }
+});
+
+const LikesSchema = mongoose.Schema({
+    owner: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'users',
+        required: [true, 'Missing owner']
+    },
+    likeType: {
+        type: String,
+        enum: ['thumb', 'tree', 'sun', 'heart']
+    }
+})
+
 const PostSchema = new mongoose.Schema({
     owner: {
         type: String,
@@ -23,13 +52,7 @@ const PostSchema = new mongoose.Schema({
         type: [String],
         default: []
     },
-    replies: {
-        type: [Number],
-        of: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'replies'
-        }
-    },
+    replies: [ReplySchema],
     createdAt: {
         type: Date,
         default: Date.now
@@ -38,10 +61,7 @@ const PostSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    likes: {
-        type: [Object],
-        required: true
-    },
+    likes: [LikesSchema],
 });
 
 const Post = mongoose.model('Post', PostSchema);

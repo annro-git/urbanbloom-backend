@@ -1,33 +1,6 @@
-const mongoose = require('mongoose');
+const mongoose = require('mongoose')
 
-const UserSchema = new mongoose.Schema({
-    username: {
-        type: String,
-        required: [true, 'Missing username'],
-        unique: true,
-        lowercase: true,
-        validate: {
-            validator: (value) => /^[a-zA-Z0-9_]{3,16}$/.test(value),
-            message: 'Invalid username'
-        }
-    },
-    firstname: {
-        type: String,
-        required: [true, 'Missing firstname'],
-        validate: {
-            validator: (value) => /^[a-zA-Z]{1,16}$/.test(value),
-            message: 'Invalid firstname'
-        }
-    },
-
-    lastname: {
-        type: String,
-        required: [true, 'Missing lastname'],
-        validate: {
-            validator: (value) => /^[a-zA-Z]{1,16}$/.test(value),
-            message: 'Invalid lastname'
-        }
-    },
+const UserSchema = mongoose.Schema({
     email: {
         type: String,
         required: [true, 'Missing email'],
@@ -57,31 +30,23 @@ const UserSchema = new mongoose.Schema({
         default: 'https://upload.wikimedia.org/wikipedia/commons/5/50/User_icon-cp.svg' // TODO : replace placeholder
     },
     gardens: {
-        type: [Number],
+        type: Array,
         of: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'garden'
+            ref: 'gardens'
         }
     },
-    posts: {
-        type: [Number],
-        of: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'post'
-        }
-    },
-    events: {
-        type: [Number],
-        of: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'event'
-        }
-    },
-    privacyMode: {
+    privacy: {
         type: Boolean,
         default: true,
     },
-});
+    isAdmin: {
+        type: Boolean,
+        default: false,
+    },
+    firstname: String,
+    lastname: String,
+})
 
-const User = mongoose.model('User', UserSchema);
-module.exports = User;
+const User = mongoose.model('users', UserSchema)
+module.exports = User

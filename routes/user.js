@@ -7,14 +7,14 @@ const router = express.Router()
 
 const checkReq = (keys) => keys.some(e => !e)
 
-// * Create an User
+// * Create User
 router.post('/', async (req, res) => {
     const { email, password, firstname, lastname} = req.body
 
     // Error 400 if email or password are missing
     if(checkReq([email, password])){
         res.status(400)
-        res.json({ result: false, error: 'Missing or empty fields'})
+        res.json({ result: false, error: 'Missing or empty field(s)'})
         return
     }
 
@@ -47,7 +47,36 @@ router.post('/', async (req, res) => {
     }
 })
 
-// * Delete an User by token
+//* Get User Token
+router.get('/', async (req, res) => {
+    const { email, password } = req.body
+
+    // Error 400 if field is missing
+    if(checkReq([email, password])){
+        res.status(400)
+        res.json({ result: false, error: 'Missing or empty field(s)' })
+        return
+    }
+
+    const user = await User.findOne({ email })
+    // Error 404 if user doesn't exist
+    if(!user){
+        res.status(404)
+        res.json({ result: false, error: 'User not found' })
+        return
+    }
+    // Error 403 if password isn't matching
+    if(!bcrypt.compareSync(password, user.password)){
+        res.status(403)
+        res.json({ result: false, error: 'Wrong email or password' })
+        return
+    }
+
+    res.json({ result: true, token: user.token })
+
+})
+
+// * Delete User
 // TODO : remove all reference in gardens (posts, replies, events)
 router.delete('/', async (req, res) => {
     const { token } = req.body
@@ -94,7 +123,7 @@ router.get('/gardens', async (req, res) => {
 
 })
 
-// * Toggle a User Garden
+// * Update User Garden
 router.put('/garden/:id', async (req, res) => {
     const { id } = req.params
     const { token } = req.body
@@ -102,7 +131,7 @@ router.put('/garden/:id', async (req, res) => {
     // Error 400 if garden or token are missing
     if(checkReq([id, token])){
         res.status(400)
-        res.json({ result: false, error: 'Missing or empty fields'})
+        res.json({ result: false, error: 'Missing or empty field(s)'})
         return
     }
 
@@ -141,7 +170,7 @@ router.get('/posts/', async (req, res) => {
     // Error 400 if token is missing
     if(checkReq([token])){
         res.status(400)
-        res.json({ result: false, error: 'Missing or empty fields'})
+        res.json({ result: false, error: 'Missing or empty field(s)'})
         return
     }
 

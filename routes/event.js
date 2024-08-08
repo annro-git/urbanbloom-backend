@@ -42,18 +42,35 @@ router.get('/', async (req, res) => {
 });
 
 
-router.get('/:subscriber', (req, res) => {
-
-    Event.find({ subscribers: req.params.subscriber })
-        .then(data => res.json({ events: data }))
-        .catch(err => res.status(400).json('Error: ' + err))
-
+router.get('/all/:subscriber', async (req, res) => {
+    try {
+        const data = await Event.find({ subscribers: req.params.subscriber })
+        if (!data || data.length === 0) {
+            res.status(404).json({ result: false, error: 'No events found for this subscriber' })
+            return
+        }
+        res.status(200).json({ events: data })
+    } catch (err) {
+        res.status(500).json({ result: false, error: 'Internal Server Error' })
+    }
 });
 
-router.get('/:garden', (req, res) => {
-    Event.find({ garden: req.params.garden })
-        .then(data => res.json({ events: data }))
-        .catch(err => res.status(400).json('Error: ' + err))
+
+router.delete('/events/:id', async (req, res) => {
+    try {
+        const { id } = req.params
+        const data = await Event.findById(id)
+        
+        if (!data) {
+            res.status(404).json({ result: false, error: 'Event not found' })
+            return
+        }
+
+        await data.remove()
+        res.status(200).json({ result: true, message: 'Event successfully deleted' })
+    } catch (err) {
+        res.status(500).json({ result: false, error: 'Internal Server Error' })
+    }
 });
 
 module.exports = router

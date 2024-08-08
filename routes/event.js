@@ -31,30 +31,23 @@ router.post('/new', (req, res) => {
 router.get('/', (req, res) => {
 
     Event.find()
-        .then(events => res.json(events))
+        .then(data => res.json({ events: data }))
         .catch(err => res.status(400).json('Error: ' + err))
 
 });
 
-router.get('/:id', (req, res) => {
-
-    Event.findById(req.params.id)
-        .then(event => res.json(event))
-        .catch(err => res.status(400).json('Error: ' + err))
-
-});
 
 router.get('/:subscriber', (req, res) => {
 
     Event.find({ subscribers: req.params.subscriber })
-        .then(events => res.json(events))
+        .then(data => res.json({ events: data }))
         .catch(err => res.status(400).json('Error: ' + err))
 
 });
 
 router.get('/:garden', (req, res) => {
     Event.find({ garden: req.params.garden })
-        .then(events => res.json(events))
+        .then(data => res.json({ events: data }))
         .catch(err => res.status(400).json('Error: ' + err))
 });
 

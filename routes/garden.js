@@ -164,6 +164,21 @@ router.post('/:id/event/', async (req, res) => {
         return
     }
 
+});
+
+
+router.get('/events/:id', async (req, res) => {
+    const { id } = req.params
+
+    const data = await Garden.findById(id)
+    if(!data){
+        res.status(404)
+        res.json({ result: false, error: 'Garden not found' })
+        return
+    }
+
+    res.status(200)
+    res.json({ events: data.events })
 })
 
 module.exports = router

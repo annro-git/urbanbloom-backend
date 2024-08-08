@@ -1,22 +1,18 @@
 const express = require('express')
+const uid2 = require('uid2')
+const router = express.Router()
+const bcrypt = require('bcrypt')
 const User = require('../models/users')
 const Garden = require('../models/gardens')
-const uid2 = require('uid2');
-const bcrypt = require('bcrypt');
-const router = express.Router()
 
-const checkReq = (keys) => keys.some(e => !e)
+const { checkReq, isFound } = require('../helpers/errorHandlers.js')
 
 // * Create User
 router.post('/', async (req, res) => {
     const { email, password, firstname, lastname} = req.body
 
-    // Error 400 if email or password are missing
-    if(checkReq([email, password])){
-        res.status(400)
-        res.json({ result: false, error: 'Missing or empty field(s)'})
-        return
-    }
+    // Error 400 : Missing or empty field(s)
+    if(!checkReq([email, password], res)) return
 
     // Error 409 if email already exists
     const isUsed = await User.findOne({ email : String(email).toLowerCase() })
@@ -51,24 +47,18 @@ router.post('/', async (req, res) => {
 router.get('/', async (req, res) => {
     const { email, password } = req.body
 
-    // Error 400 if field is missing
-    if(checkReq([email, password])){
-        res.status(400)
-        res.json({ result: false, error: 'Missing or empty field(s)' })
-        return
-    }
+    // Error 400 : Missing or empty field(s)
+    if(!checkReq([email, password], res)) return
 
     const user = await User.findOne({ email })
-    // Error 404 if user doesn't exist
-    if(!user){
-        res.status(404)
-        res.json({ result: false, error: 'User not found' })
-        return
-    }
-    // Error 403 if password isn't matching
+
+    // Error 404 : Not found
+    if(!isFound('User', user, res)) return
+
+    // Error 403 : Mismatching email / password pair
     if(!bcrypt.compareSync(password, user.password)){
         res.status(403)
-        res.json({ result: false, error: 'Wrong email or password' })
+        res.json({ result: false, error: 'Mismatching email / password pair' })
         return
     }
 
@@ -77,26 +67,63 @@ router.get('/', async (req, res) => {
 })
 
 // * Delete User
-// TODO : remove all reference in gardens (posts, replies, events)
 router.delete('/', async (req, res) => {
     const { token } = req.body
 
-    // Error 400 if email is missing
-    if(checkReq([token])){
+    // Error 400 : Missing or empty field(s)
+    if(!checkReq([token], res)) return
+
+    const user = await User.findOne({ token })
+    // Error 404 : Not found
+    if(!isFound('User', user, res)) return
+
+    const { gardens } = user
+    if(gardens.length > 0){
+        await user.populate('gardens')
+        gardens.forEach(async (garden) => {
+            const { posts, events, members, owners } = garden
+            if(posts.length > 0){
+                posts.forEach(post => {
+                    const { replies, likes } = post
+                    // remove all user replies
+                    replies = replies.filter(reply => String(reply.owner) !== String(user._id))
+                    // remove all user likes
+                    likes = likes.filter(like => String(like.owner) !== String(user._id))
+                })
+                // remove all user posts
+                posts = posts.filter(post => String(post.owner) !== String(user._id))
+            }
+            if(events.length > 0){
+                events.forEach(event => {
+                    const { subscribers } = event
+                    // remove all user subscriptions
+                    subscribers = subscribers.filter(subscriber => String(subscriber) !== String(user._id)) 
+                })
+                // remove all user events
+                events = events.filter(event => String(event.owner) !== String(user._id))
+            }
+            // TODO : members, owners ?
+            try {
+                await Garden.save()
+            } catch (error) {
+                // Error 400 can't update Garden
+                res.status(400)
+                res.json({ result: false, error })
+                return
+            }
+        })
+    }
+
+    try {
+        await User.deleteOne({ token })
+        res.json({ result: true, message: 'User and related datas deleted' })
+        return   
+    } catch (error) {
+        // Error 400 can't delete User
         res.status(400)
-        res.json({ result: false, error: 'Missing token' })
+        res.json({ result: false, error})
         return
     }
-
-    const response = await User.findOneAndDelete({ token })
-    // Error 404 if token doesn't exist
-    if(!response){
-        res.status(404)
-        res.json({ result: false, error: 'User not found' })
-        return
-    }
-
-    res.json({ result: true, message: 'User deleted' })
 
 })
 
@@ -104,22 +131,14 @@ router.delete('/', async (req, res) => {
 router.get('/gardens', async (req, res) => {
     const { token } = req.body
 
-    // Error 400 if token is missing
-    if(checkReq([token])){
-        res.status(400)
-        res.json({ result: false, error: 'Missing token' })
-        return
-    }
+    // Error 400 : Missing or empty field(s)
+    if(!checkReq([token], res)) return
 
-    const response = await User.findOne({ token })
-    // Error 404 if token doesn't exist
-    if(!response){
-        res.status(404)
-        res.json({ result: false, error: 'User not found' })
-        return
-    }
+    const user = await User.findOne({ token })
+    // Error 404 : Not found
+    if(!isFound('User', user, res)) return
 
-    res.json({ result: true, gardens: response.gardens })
+    res.json({ result: true, gardens: user.gardens })
 
 })
 
@@ -128,12 +147,8 @@ router.put('/garden/:id', async (req, res) => {
     const { id } = req.params
     const { token } = req.body
     
-    // Error 400 if garden or token are missing
-    if(checkReq([id, token])){
-        res.status(400)
-        res.json({ result: false, error: 'Missing or empty field(s)'})
-        return
-    }
+    // Error 400 : Missing or empty field(s)
+    if(!checkReq([id, token], res)) return
 
     try {
         await Garden.findById(id)
@@ -144,15 +159,11 @@ router.put('/garden/:id', async (req, res) => {
         return
     }
 
-    // Error 404 if user doesn't exist
-    const currentUser = await User.findOne({ token })
-    if(!currentUser){
-        res.status(404)
-        res.json({ result: false, error: 'User not found' })
-        return
-    }
+    const user = await User.findOne({ token })
+    // Error 404 : Not found
+    if(!isFound('User', user, res)) return
 
-    if(currentUser.gardens.some(e => String(e) === id)){
+    if(user.gardens.some(e => String(e) === id)){
         await User.updateOne({ token }, { $pullAll: { gardens: [id] } })
         res.json({ result: true, message: `Garden ${ id } removed`})
         return
@@ -161,38 +172,6 @@ router.put('/garden/:id', async (req, res) => {
         res.json({ result: true, message: `Garden ${ id } added`})
         return
     }
-})
-
-// * Get User Posts
-router.get('/posts/', async (req, res) => {
-    const { token } = req.body
-
-    // Error 400 if token is missing
-    if(checkReq([token])){
-        res.status(400)
-        res.json({ result: false, error: 'Missing or empty field(s)'})
-        return
-    }
-
-    // Error 404 if user doesn't exist
-    const user = await User.findOne({ token })
-    if(!user){
-        res.status(404)
-        res.json({ result: false, error: 'User not found' })
-        return
-    }
-
-    const { gardens } = user
-    await user.populate('gardens')
-    const posts = gardens.map(garden => {
-        return ({
-            name: garden.name,
-            id: garden._id,
-            posts: garden.posts.filter(post => String(post.owner) === String(user._id))
-        })
-    })
-    res.json({ result: true, data: posts})
-
 })
 
 module.exports = router

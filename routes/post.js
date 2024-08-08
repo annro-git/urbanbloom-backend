@@ -2,24 +2,35 @@ const express = require('express')
 const router = express.Router()
 const Post = require('../models/posts')
 
-router.post('/create', (req, res) => {
+router.post('/create', async (req, res) => {
+    try {
+        const { owner, garden, text, pictures, replies, title, likes } = req.body
 
-    const { owner, garden, text, pictures, replies, title, likes } = req.body
+        // Vérifier si le post existe déjà
+        const existingPost = await Post.findOne({ owner, garden, title })
+        if (existingPost) {
+            res.status(400).json({ result: false, message: 'Post already exists' })
+            return
+        }
 
-    const post = new Post({
-        owner,
-        garden,
-        text,
-        pictures,
-        replies,
-        createdAt: Date.now(),
-        title,
-        likes
-    })
-    post.save()
-        .then(data => res.json({ result: true, data }))
-        .catch(error => res.json({ message: error }))
-});
+        // Créer un nouveau post
+        const post = new Post({
+            owner,
+            garden,
+            text,
+            pictures,
+            replies,
+            createdAt: Date.now(),
+            title,
+            likes
+        })
+
+        const data = await post.save()
+        res.status(201).json({ result: true, data })
+    } catch (error) {
+        res.status(500).json({ result: false, message: error.message })
+    }
+})
 
 router.get('/all', (req, res) => {
     Post.find()

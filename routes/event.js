@@ -53,7 +53,7 @@ router.get('/all/:subscriber', async (req, res) => {
     } catch (err) {
         res.status(500).json({ result: false, error: 'Internal Server Error' })
     }
-});
+}); // 08/08/2024
 
 
 router.delete('/events/:id', async (req, res) => {
@@ -71,6 +71,6 @@ router.delete('/events/:id', async (req, res) => {
     } catch (err) {
         res.status(500).json({ result: false, error: 'Internal Server Error' })
     }
-});
+}); // 08/08/2024
 
 module.exports = router

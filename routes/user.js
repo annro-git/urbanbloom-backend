@@ -8,10 +8,15 @@ const bcrypt = require('bcrypt');
 const checkReq = (keys) => keys.some(e => !e)
 
 router.get('/', (req, res) => {
+    console.log('Received GET request on /');
     User.find()
         .then(data => {
-            res.json({ result: true, users: data })
+            res.json({ result: true, users: data });
         })
+        .catch(error => {
+            console.error('Error fetching users:', error);
+            res.status(500).json({ result: false, error: error.message });
+        });
 });
 
 

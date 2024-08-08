@@ -211,3 +211,37 @@ describe('POST /garden/:id/event', () => {
         expect(response.body).toHaveProperty('message', expect.stringContaining('Event created successfully'));
     });
 });
+
+describe('GET /events/:id', () => {
+    it('should return 404 if event does not exist', async () => {
+        const response = await request(app)
+            .get('/events/invalid-id');
+
+        expect(response.status).toBe(404);
+        expect(response.body).toHaveProperty('result', false);
+        expect(response.body).toHaveProperty('error', 'Event not found');
+    });
+
+    it('should return 200 and event details if event exists', async () => {
+        // Créez un nouvel événement et sauvegardez-le dans la base de données
+        const newEvent = new Event({
+            title: 'Test Event',
+            text: 'This is a test event',
+            pictures: ['pic1.jpg', 'pic2.jpg'],
+            date: new Date()
+        });
+        await newEvent.save();
+
+        const response = await request(app)
+            .get(`/events/${newEvent._id}`); // Utilisez l'ID de l'événement sauvegardé
+
+        expect(response.status).toBe(200);
+        expect(response.body).toHaveProperty('result', true);
+        expect(response.body).toHaveProperty('event');
+        expect(response.body.event).toHaveProperty('id', newEvent._id.toString());
+        expect(response.body.event).toHaveProperty('title', 'Test Event');
+        expect(response.body.event).toHaveProperty('text', 'This is a test event');
+        expect(response.body.event).toHaveProperty('pictures', ['pic1.jpg', 'pic2.jpg']);
+        expect(response.body.event).toHaveProperty('date', newEvent.date.toISOString());
+    });
+});

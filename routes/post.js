@@ -30,12 +30,20 @@ router.post('/create', async (req, res) => {
     } catch (error) {
         res.status(500).json({ result: false, message: error.message })
     }
-})
+});
 
-router.get('/all', (req, res) => {
-    Post.find()
-        .then(data => res.json({ result: true, data }))
-        .catch(error => res.json({ message: error }))
+
+router.get('/all', async (req, res) => {
+    try {
+        const posts = await Post.find()
+
+        res.status(200).json({
+            result: true,
+            data: posts
+        });
+    } catch (error) {
+        res.status(500).json({ result: false, message: error.message });
+    }
 });
 
 router.get('/search/:owner', (req, res) => {
@@ -44,8 +52,8 @@ router.get('/search/:owner', (req, res) => {
         .catch(error => res.json({ message: error }))
 });
 
-router.get('/search/:title', (req, res) => {
-    Post.find({ title: req.params.title })
+router.get('/search/:owner/:title', (req, res) => {
+    Post.findOne({ title: req.params.title })
         .then(data => res.json({ result: true, data }))
         .catch(error => res.json({ message: error }))
 });

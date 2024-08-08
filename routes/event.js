@@ -49,7 +49,7 @@ router.get('/:subscriber', (req, res) => {
     Event.find({ subscribers: req.params.subscriber })
         .then(events => res.json(events))
         .catch(err => res.status(400).json('Error: ' + err))
-        
+
 });
 
 router.get('/:garden', (req, res) => {

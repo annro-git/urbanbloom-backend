@@ -188,4 +188,24 @@ router.get('/events/:id', async (req, res) => {
 });
 
 
+// Route pour obtenir les filtres d'un jardin spécifique
+router.get('/filters/:gardenId', async (req, res) => {
+    try {
+        const { gardenId } = req.params; // Récupère l'ID du jardin depuis les paramètres de la requête
+
+        const garden = await Garden.findById(gardenId); // Recherche le jardin dans la base de données
+
+        if (!garden) {
+            return res.status(404).json({ result: false, message: 'Jardin non trouvé.' });
+        }
+
+        const filters = garden.filters; // Supposons que les filtres sont stockés dans une propriété 'filters' du modèle Garden
+
+        res.status(200).json({ result: true, data: filters });
+    } catch (error) {
+        res.status(500).json({ result: false, message: error.message });
+    }
+}); // 08/08/2024
+
+
 module.exports = router

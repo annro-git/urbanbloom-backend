@@ -135,7 +135,7 @@ router.get('/posts/:owner', async (req, res) => {
             return res.status(403).json({ result: false, message: 'Token invalide.' });
         }
 
-        if (!posts.length ) {
+        if (!posts.length) {
             return res.status(404).json({ result: false, message: 'Aucun post trouvé pour ce propriétaire.' });
         }
 

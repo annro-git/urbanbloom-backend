@@ -12,15 +12,15 @@ router.post('/', async (req, res) => {
     const { latitude, longitude, name, description, token, interests, bonus } = req.body
 
     // Error 400 if value is missing
-    if(checkReq([latitude, longitude, name, description, token, interests, bonus])){
+    if (checkReq([latitude, longitude, name, description, token, interests, bonus])) {
         res.status(400)
-        res.json({ result: false, error: 'Missing or empty fields'})
+        res.json({ result: false, error: 'Missing or empty fields' })
         return
     }
 
     // get owner
     const owner = await User.findOne({ token })
-    if(!owner){
+    if (!owner) {
         res.status(404)
         res.json({ result: false, error: 'User not found' })
         return
@@ -29,7 +29,7 @@ router.post('/', async (req, res) => {
     const members = [owner]
     const coordinates = { latitude, longitude }
     const filters = { interests: strToArr(interests), bonus: strToArr(bonus) }
-    
+
     const newGarden = new Garden({
         coordinates,
         name,
@@ -41,17 +41,17 @@ router.post('/', async (req, res) => {
 
     try {
         const response = await newGarden.save()
-        if(!response){
+        if (!response) {
             res.status(400)
-            res.json({ result: false, error: 'Failing to create new garden'})
+            res.json({ result: false, error: 'Failing to create new garden' })
         }
-        await User.updateOne({ token }, { $push: { gardens: response._id} }) // add garden to owner garden list
+        await User.updateOne({ token }, { $push: { gardens: response._id } }) // add garden to owner garden list
         res.status(201)
         res.json({ result: true, message: `Garden ${name} created and added to ${owner._id} gardens` })
-        
+
     } catch (error) {
         res.status(400)
-        res.json({ result: false, error})
+        res.json({ result: false, error })
         return
     }
 
@@ -63,15 +63,15 @@ router.post('/:id/post/', async (req, res) => {
     const { token, title, text, pictures } = req.body
 
     // Error 400 if value is missing
-    if(checkReq([id, token, title, text, pictures])){
+    if (checkReq([id, token, title, text, pictures])) {
         res.status(400)
-        res.json({ result: false, error: 'Missing or empty fields'})
+        res.json({ result: false, error: 'Missing or empty fields' })
         return
     }
 
     // Error 404 if garden doesn't exist
     const isGarden = await Garden.findById(id)
-    if(!isGarden){
+    if (!isGarden) {
         res.status(404)
         res.json({ result: false, error: 'Garden not found' })
         return
@@ -79,7 +79,7 @@ router.post('/:id/post/', async (req, res) => {
 
     // Error 404 if user doesn't exist
     const postOwner = await User.findOne({ token })
-    if(!postOwner){
+    if (!postOwner) {
         res.status(404)
         res.json({ result: false, error: 'User not found' })
         return
@@ -87,9 +87,9 @@ router.post('/:id/post/', async (req, res) => {
 
     // Error 403 if user is not a garden member
     const isMember = await Garden.findOne({ members: postOwner._id })
-    if(!isMember){
+    if (!isMember) {
         res.status(403)
-        res.json({ result: false, error: 'User is not a member'})
+        res.json({ result: false, error: 'User is not a member' })
         return
     }
 
@@ -100,9 +100,9 @@ router.post('/:id/post/', async (req, res) => {
         pictures,
     }
     try {
-        await Garden.updateOne({ _id: id }, { $push: { posts: newPost }})
+        await Garden.updateOne({ _id: id }, { $push: { posts: newPost } })
         res.status(201)
-        res.json({ result: true, message: 'Post created'})
+        res.json({ result: true, message: 'Post created' })
     } catch (error) {
         res.status(400)
         res.json({ result: false, error })
@@ -117,15 +117,15 @@ router.post('/:id/event/', async (req, res) => {
     const { token, title, text, pictures, date } = req.body
 
     // Error 400 if value is missing
-    if(checkReq([id, token, title, text, pictures, date])){
+    if (checkReq([id, token, title, text, pictures, date])) {
         res.status(400)
-        res.json({ result: false, error: 'Missing or empty fields'})
+        res.json({ result: false, error: 'Missing or empty fields' })
         return
     }
 
     // Error 404 if garden doesn't exist
     const isGarden = await Garden.findById(id)
-    if(!isGarden){
+    if (!isGarden) {
         res.status(404)
         res.json({ result: false, error: 'Garden not found' })
         return
@@ -133,7 +133,7 @@ router.post('/:id/event/', async (req, res) => {
 
     // Error 404 if user doesn't exist
     const postOwner = await User.findOne({ token })
-    if(!postOwner){
+    if (!postOwner) {
         res.status(404)
         res.json({ result: false, error: 'User not found' })
         return
@@ -141,9 +141,9 @@ router.post('/:id/event/', async (req, res) => {
 
     // Error 403 if user is not a garden member
     const isMember = await Garden.findOne({ members: postOwner._id })
-    if(!isMember){
+    if (!isMember) {
         res.status(403)
-        res.json({ result: false, error: 'User is not a member'})
+        res.json({ result: false, error: 'User is not a member' })
         return
     }
 
@@ -155,9 +155,9 @@ router.post('/:id/event/', async (req, res) => {
         date: new Date(),
     }
     try {
-        await Garden.updateOne({ _id: id }, { $push: { events: newEvent }})
+        await Garden.updateOne({ _id: id }, { $push: { events: newEvent } })
         res.status(201)
-        res.json({ result: true, message: 'Event created'})
+        res.json({ result: true, message: 'Event created' })
     } catch (error) {
         res.status(400)
         res.json({ result: false, error })
@@ -166,19 +166,25 @@ router.post('/:id/event/', async (req, res) => {
 
 });
 
-
 router.get('/events/:id', async (req, res) => {
-    const { id } = req.params
+    try {
+        const { id } = req.params;
 
-    const data = await Garden.findById(id)
-    if(!data){
-        res.status(404)
-        res.json({ result: false, error: 'Garden not found' })
-        return
+        const data = await Garden.findById(id);
+        if (!data) {
+            res.status(404).json({ result: false, error: 'Garden not found' });
+            return;
+        }
+
+        if (!data.events || data.events.length === 0) {
+            res.status(404).json({ result: false, error: 'No events found' });
+            return;
+        }
+
+        res.status(200).json({ events: data.events });
+    } catch (error) {
+        res.status(500).json({ result: false, error: 'Internal Server Error' });
     }
-
-    res.status(200)
-    res.json({ events: data.events })
-})
+});
 
 module.exports = router

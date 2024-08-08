@@ -28,12 +28,17 @@ router.post('/new', (req, res) => {
         .catch(err => res.status(400).json('Error: ' + err))
 });
 
-router.get('/', (req, res) => {
-
-    Event.find()
-        .then(data => res.json({ events: data }))
-        .catch(err => res.status(400).json('Error: ' + err))
-
+router.get('/', async (req, res) => {
+    try {
+        const data = await Event.find()
+        if (!data || data.length === 0) {
+            res.status(404).json({ result: false, error: 'No events found' })
+            return
+        }
+        res.status(200).json({ events: data })
+    } catch (err) {
+        res.status(500).json({ result: false, error: 'Internal Server Error' })
+    }
 });
 
 

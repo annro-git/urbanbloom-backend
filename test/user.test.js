@@ -30,12 +30,31 @@ describe('User Routes', () => {
     });
 
     test('should get all users', async () => {
-        const response = await request(app).get('/');
 
-        expect(response.status).toBe(200);
-        expect(response.body.result).toBe(true);
-        expect(response.body.users).toBeInstanceOf(Array);
+        const users = [
+            { firstname: 'John', lastname: 'Doe', token: uid2(32), email: 'john.doe@example.com', password: 'password123', username: 'johndoe' },
+            { firstname: 'Jane', lastname: 'Doe', token: uid2(32), email: 'jane.doe@example.com', password: 'password123', username: 'janedoe' }
+        ];
+        await User.insertMany(users);
+
+        try {
+
+            const response = await request(app).get('/user');
+
+            expect(response.status).not.toBe(403);
+            expect(response.status).toBe(200);
+            expect(response.body.result).toBe(true);
+            expect(response.body.users).toBeInstanceOf(Array);
+            expect(response.body.users.length).toBeGreaterThanOrEqual(0);
+
+        } catch (error) {
+
+            throw error; // Rejeter l'erreur pour s'assurer que le test échoue
+        }
+
     });
+
+
 
     test('should register a new user', async () => {
         const response = await request(app)

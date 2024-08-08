@@ -7,16 +7,28 @@ const bcrypt = require('bcrypt');
 
 const checkReq = (keys) => keys.some(e => !e)
 
-router.get('/', (req, res) => {
+/* router.get('/', async (req, res) => {
     console.log('Received GET request on /');
-    User.find()
-        .then(data => {
+    const data = await User.find()
+      
+            console.log(data);
+            if (data.length >= 0) {
             res.json({ result: true, users: data });
-        })
-        .catch(error => {
+            }
+        else {
             console.error('Error fetching users:', error);
             res.status(500).json({ result: false, error: error.message });
-        });
+        };
+}); */
+
+router.get('/', async (req, res) => {
+    try {
+        const users = await User.find();
+        res.status(200).json({ result: true, users });
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        res.status(500).json({ result: false, error: error.message });
+    }
 });
 
 

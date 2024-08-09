@@ -74,9 +74,11 @@ router.post('/:gardenId/post/', async (req, res) => {
         text,
         pictures,
     }
+
+    garden.posts.push(newPost)
     
     try {
-        await Garden.updateOne({ _id: gardenId }, { $push: { posts: newPost }})
+        await Garden.save()
         res.status(201)
         res.json({ result: true, message: 'Post created'})
     } catch (error) {
@@ -263,7 +265,7 @@ router.post('/:gardenId/event/', async (req, res) => {
     // Error 400 : Missing or empty field(s)
     if(!checkReq([gardenId, token, title, text, pictures, date], res)) return
 
-    const isGarden = await Garden.findById(gardenId)
+    const garden = await Garden.findById(gardenId)
     // Error 404 : Not found
     if(!isFound('Garden', garden, res)) return
 
@@ -282,8 +284,11 @@ router.post('/:gardenId/event/', async (req, res) => {
         pictures,
         date: new Date(),
     }
+
+    garden = garden.events.push(newEvent)
+
     try {
-        await Garden.updateOne({ _id: gardenId }, { $push: { events: newEvent }})
+        await garden.save()
         res.status(201)
         res.json({ result: true, message: 'Event created'})
     } catch (error) {

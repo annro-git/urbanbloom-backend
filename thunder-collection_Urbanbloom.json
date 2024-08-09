@@ -1,0 +1,173 @@
+{
+    "clientName": "Thunder Client",
+    "collectionName": "Urbanbloom",
+    "collectionId": "82ec0ab9-80a3-40b9-8404-0310d96e4e3f",
+    "dateExported": "2024-08-09T09:26:23.694Z",
+    "version": "1.2",
+    "folders": [],
+    "requests": [
+        {
+            "_id": "6bfa4876-32e3-4942-b601-b89c2442d6be",
+            "colId": "82ec0ab9-80a3-40b9-8404-0310d96e4e3f",
+            "containerId": "",
+            "name": "Create User",
+            "url": "localhost:3000/user",
+            "method": "POST",
+            "sortNum": 10000,
+            "created": "2024-08-09T08:47:26.527Z",
+            "modified": "2024-08-09T08:47:26.527Z",
+            "headers": [],
+            "body": {
+                "type": "formencoded",
+                "raw": "",
+                "form": [
+                    {
+                        "name": "username",
+                        "value": "test01"
+                    },
+                    {
+                        "name": "email",
+                        "value": "test@test.test"
+                    },
+                    {
+                        "name": "password",
+                        "value": "0Azertyuiop"
+                    }
+                ]
+            }
+        },
+        {
+            "_id": "a432d841-5ecd-4d35-bfe1-dee0bd75beb4",
+            "colId": "82ec0ab9-80a3-40b9-8404-0310d96e4e3f",
+            "containerId": "",
+            "name": "Create Garden",
+            "url": "localhost:3000/garden/",
+            "method": "POST",
+            "sortNum": 20000,
+            "created": "2024-08-09T08:51:43.007Z",
+            "modified": "2024-08-09T08:55:28.752Z",
+            "headers": [],
+            "body": {
+                "type": "formencoded",
+                "raw": "",
+                "form": [
+                    {
+                        "name": "token",
+                        "value": "xDpjdvpeS9VI3HmvqZ7543Dh3MIeCGg_"
+                    },
+                    {
+                        "name": "name",
+                        "value": "Jardin Test"
+                    },
+                    {
+                        "name": "description",
+                        "value": "Description de Jardin Test"
+                    },
+                    {
+                        "name": "latitude",
+                        "value": "1"
+                    },
+                    {
+                        "name": "longitude",
+                        "value": "2"
+                    },
+                    {
+                        "name": "interests",
+                        "value": "['fruits']"
+                    },
+                    {
+                        "name": "bonus",
+                        "value": "['dogs']"
+                    }
+                ]
+            }
+        },
+        {
+            "_id": "d6d18445-7751-42e6-bc52-bf0d9ae9190d",
+            "colId": "82ec0ab9-80a3-40b9-8404-0310d96e4e3f",
+            "containerId": "",
+            "name": "Create Post",
+            "url": "localhost:3000/garden/66b5d980195f3efcab0eb029/post?token",
+            "method": "POST",
+            "sortNum": 30000,
+            "created": "2024-08-09T08:58:41.415Z",
+            "modified": "2024-08-09T08:58:41.415Z",
+            "headers": [],
+            "params": [
+                {
+                    "name": "token",
+                    "value": "",
+                    "isPath": false
+                }
+            ],
+            "body": {
+                "type": "formencoded",
+                "raw": "",
+                "form": [
+                    {
+                        "name": "token",
+                        "value": "xDpjdvpeS9VI3HmvqZ7543Dh3MIeCGg_"
+                    },
+                    {
+                        "name": "title",
+                        "value": "Post 01"
+                    },
+                    {
+                        "name": "text",
+                        "value": "Text Post 01"
+                    },
+                    {
+                        "name": "pictures",
+                        "value": "[]"
+                    }
+                ]
+            }
+        },
+        {
+            "_id": "5033dec5-f815-4754-8288-c829bcea35c5",
+            "colId": "82ec0ab9-80a3-40b9-8404-0310d96e4e3f",
+            "containerId": "",
+            "name": "Get Garden Posts",
+            "url": "localhost:3000/garden/66b5d980195f3efcab0eb029/posts?token=xDpjdvpeS9VI3HmvqZ7543Dh3MIeCGg_",
+            "method": "GET",
+            "sortNum": 40000,
+            "created": "2024-08-09T09:15:30.267Z",
+            "modified": "2024-08-09T09:22:23.962Z",
+            "headers": [],
+            "params": [
+                {
+                    "name": "token",
+                    "value": "xDpjdvpeS9VI3HmvqZ7543Dh3MIeCGg_",
+                    "isPath": false
+                }
+            ]
+        },
+        {
+            "_id": "29f6b360-c4e3-4da6-baa6-3a0c4762f93a",
+            "colId": "82ec0ab9-80a3-40b9-8404-0310d96e4e3f",
+            "containerId": "",
+            "name": "Post Garden Post Reply",
+            "url": "localhost:3000/garden/66b5d980195f3efcab0eb029/post/66b5da20195f3efcab0eb02f",
+            "method": "POST",
+            "sortNum": 50000,
+            "created": "2024-08-09T09:21:00.892Z",
+            "modified": "2024-08-09T09:21:00.892Z",
+            "headers": [],
+            "body": {
+                "type": "formencoded",
+                "raw": "",
+                "form": [
+                    {
+                        "name": "token",
+                        "value": "xDpjdvpeS9VI3HmvqZ7543Dh3MIeCGg_"
+                    },
+                    {
+                        "name": "text",
+                        "value": "Réponse 01"
+                    }
+                ]
+            }
+        }
+    ],
+    "ref": "w1-rdaRgnFfvQGmz96QmUORKn6Ok8tje1kbsKDpbR4vpEydGBoTYzvU0WQq4n0IbSAe_Oi7um1CDOafTvPwSqA"
+}

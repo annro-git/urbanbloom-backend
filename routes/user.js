@@ -106,10 +106,7 @@ router.delete('/', async (req, res) => {
                 // remove from garden members
                 members = members.filter(member => String(member) !== String(user._id))
             }
-            if(owners.length > 1) {
-                // remove from garden owners if other owners
-                owners = owners.filter(owner => String(owner) !== String(user._id))
-            }
+                // TODO owner / last owner ?
             try {
                 await Garden.save()
             } catch (error) {

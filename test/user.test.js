@@ -58,7 +58,7 @@ describe('User Routes', () => {
 
     test('should register a new user', async () => {
         const response = await request(app)
-            .post('/register')
+            .post('/user/register')
             .send({
                 firstname: 'John',
                 lastname: 'Doe',
@@ -84,7 +84,7 @@ describe('User Routes', () => {
         await user.save();
 
         const response = await request(app)
-            .post('/login')
+            .post('/user/login')
             .send({
                 username: 'johndoe',
                 password: 'password123'
@@ -100,7 +100,7 @@ describe('User Routes', () => {
         await event.save();
 
         const response = await request(app)
-            .get(`/event/${event._id}`)
+            .get(`/user/event/${event._id}`)
             .send({ token: 'sometoken' });
 
         expect(response.status).toBe(200);

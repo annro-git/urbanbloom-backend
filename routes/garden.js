@@ -153,7 +153,7 @@ router.post('/:gardenId/post/:postId', async (req, res) => {
     if(!isMember(member, res)) return
 
     const newReply = {
-        owner: member._id,
+        owner: user._id,
         text,
         date: new Date(),
     }
@@ -172,7 +172,7 @@ router.post('/:gardenId/post/:postId', async (req, res) => {
 // * Get Garden Post Replies
 router.get('/:gardenId/post/:postId', async (req, res) => {
     const { gardenId, postId } = req.params
-    const { token } = req.body
+    const { token } = req.headers
     // Error 400 : Missing or empty field(s)
     if(!checkReq([gardenId, postId, token], res)) return
 
@@ -192,7 +192,17 @@ router.get('/:gardenId/post/:postId', async (req, res) => {
     // Error 403 : User is not a member
     if(!isMember(member, res)) return
 
-    res.json({ result: true, replies: post.replies })
+    await garden.populate(`posts.replies.owner`)
+
+    const replies = post.replies.map(reply => {
+        return ({
+            owner: reply.owner.username,
+            createdAt: reply.createdAt,
+            text: reply.text,
+        })
+    })
+
+    res.json({ result: true, replies })
 
 })
 
@@ -326,8 +336,111 @@ router.put('/:gardenId/owner', async (req, res) => {
         res.status(403)
         res.json({ result: false, error: 'User is not an owner' })
     }
+
+    const target = await User.findOne({ username })
+    // Error 404 : Not found
+    if(!isFound('Target', target, res)) return
+    // Error 403 : Target is not an member
+    if(!garden.members.find(member => String(member) === String(user._id))){
+        res.status(403)
+        res.json({ result: false, error: 'Target is not an member' })
+    }
+
+    const { owners } = garden
+    if(!owners.find(owner => String(owner) === String(target._id))){
+        owners.push(target)
+        try {
+           await garden.save()
+           res.status(200)
+           res.json({ result: true, message: 'Target added to owners'}) 
+        } catch (error) {
+            res.status(400)
+            res.json({ result: false, error })
+        }
+        return
+    }
+    owners = owners.filter(owner => String(owner) !== String(target._id))
+    try {
+        await garden.save()
+        res.status(200)
+        res.json({ result: true, message: 'Target removed to owners'}) 
+     } catch (error) {
+         res.status(400)
+         res.json({ result: false, error })
+     }
 })
 
-// * Delete Garden Member
+// * Update Garden Member
+router.put('/:gardenId/user', async (req,res) => {
+    const { gardenId } = req.params
+    const { token, username } = req.body
+    // Error 400 : Missing or empty field(s)
+    if(!checkReq([gardenId, token], res)) return
+
+    const garden = await Garden.findById(gardenId)
+    // Error 404 : Not found
+    if(!isFound('Garden', garden, res)) return
+
+    let user = await User.findOne({ token })
+    // Error 404 : Not found
+    if(!isFound('User', user, res)) return
+
+    let member = await User.findOne({ username })
+        // Error 404 : Not found
+        if(!isFound('User', member, res)) return
+
+    const save = async (verb) => {
+        try {
+            await garden.save()
+            return { result: true, message: `Member ${verb}`}
+        } catch (error) {
+            return { result: false, error }
+        }
+    }
+    if(!garden.owners.find(owner => String(owner) === String(user._id))){
+// "token user" !== owner
+        if(String(member._id) !== String(user._id)){
+// "token user" !== owner | "token user" !== "username user"
+            if(!garden.members.find(e => String(e) === String(member._id))){
+// "token user" !== owner | "token user" !== "username user" | "username user" !== member
+                garden.members.push(member)
+                res.json(await save('added (a)'))
+                return
+            }
+// "token user" !== owner | "token user" !== "username user" | "username user" === member
+            garden.members = garden.members.filter(e => String(e) !== String(member._id))
+            res.json(await save('deleted (a)'))
+            return
+        }
+// "token user" !== owner | "token user" === "username user"
+        if(!garden.members.find(member => String(member) === String(user._id))){
+// "token user" !== owner | "token user" === "username user" | "token user" !== member
+            garden.members.push(user)
+            res.json(await save('added (b)'))
+            return
+        }
+// "token user" !== owner | "token user" === "username user" | "token user" === member
+        garden.members = garden.members.filter(member => String(member) !== String(user._id))
+        res.json(await save('deleted (b)'))
+        return
+    }
+// "token user" === owner
+    if(String(member._id) !== String(user._id)){
+// "token user" === owner | "token user" !== "username user"
+        if(!garden.members.find(e => String(e) === String(member._id))){
+// "token user" === owner | "token user" !== "username user" | "username user" !== member
+            garden.members.push(member)
+            res.json(await save('added (c)'))
+            return
+        }
+// "token user" === owner | "token user" !== "username user" | "username user" === member
+        garden.members = garden.members.filter(e => String(e) !== String(member._id))
+        res.json(await save('deleted (c)'))
+        return
+    }
+// "token user" === owner | "token user" === "username user"
+    res.status(403)
+    res.json({ result: false, error: 'Owner can\'t revoke is member status'})
+})
 
 module.exports = router

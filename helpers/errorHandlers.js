@@ -4,6 +4,7 @@ const checkReq = (keys, res) => {
         res.json({ result: false, error: 'Missing or empty field(s)' })
         return false
     }
+    return true
 }
 
 const isFound = (name, type, res) => {
@@ -12,6 +13,7 @@ const isFound = (name, type, res) => {
         res.json({ result: false, error: `${name} not found` })
         return false
     }
+    return true
 }
 
 const isMember = (user, res) => {
@@ -19,6 +21,7 @@ const isMember = (user, res) => {
         res.status(403)
         res.json({ result: false, error: 'User is not a member' })
     }
+    return true
 }
 
 const isOwnerOrAdmin = () => {} // TODO

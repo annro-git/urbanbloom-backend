@@ -44,7 +44,7 @@ router.post('/', async (req, res) => {
 })
 
 //* Get User Token
-router.get('/', async (req, res) => {
+router.post('/token', async (req, res) => {
     const { email, password } = req.body
 
     // Error 400 : Missing or empty field(s)
@@ -102,7 +102,14 @@ router.delete('/', async (req, res) => {
                 // remove all user events
                 events = events.filter(event => String(event.owner) !== String(user._id))
             }
-            // TODO : members, owners ?
+            if(members.length > 0) {
+                // remove from garden members
+                members = members.filter(member => String(member) !== String(user._id))
+            }
+            if(owners.length > 1) {
+                // remove from garden owners if other owners
+                owners = owners.filter(owner => String(owner) !== String(user._id))
+            }
             try {
                 await Garden.save()
             } catch (error) {
@@ -142,7 +149,7 @@ router.get('/gardens', async (req, res) => {
 
 })
 
-// * Update User Garden
+// * Update User Gardens
 router.put('/garden/:id', async (req, res) => {
     const { id } = req.params
     const { token } = req.body

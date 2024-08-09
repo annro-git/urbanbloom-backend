@@ -3,12 +3,12 @@ const mongoose = require('mongoose');
 const app = require('../app'); // Assurez-vous que le chemin est correct
 const User = require('../models/users');
 const Event = require('../models/events');
+const Garden = require('../models/gardens');
 const bcrypt = require('bcrypt');
 const uid2 = require('uid2');
 
 describe('User Routes', () => {
     beforeAll(async () => {
-        // Connect to the database using the connection string from environment variables
         await mongoose.connect(process.env.CONNECTION_STRING, {
             useNewUrlParser: true,
             useUnifiedTopology: true,
@@ -16,95 +16,119 @@ describe('User Routes', () => {
     });
 
     beforeEach(async () => {
-        // Clean up the database before each test
         await User.deleteMany({});
-        await Event.deleteMany({});
+        await Garden.deleteMany({});
     });
 
     afterAll(async () => {
-        // Clean up the database after all tests
         await User.deleteMany({});
-        await Event.deleteMany({});
-        // Close the database connection
+        await Garden.deleteMany({});
         await mongoose.connection.close();
     });
 
-    test('should get all users', async () => {
-
-        const users = [
-            { firstname: 'John', lastname: 'Doe', token: uid2(32), email: 'john.doe@example.com', password: 'password123', username: 'johndoe' },
-            { firstname: 'Jane', lastname: 'Doe', token: uid2(32), email: 'jane.doe@example.com', password: 'password123', username: 'janedoe' }
-        ];
-        await User.insertMany(users);
-
-        try {
-
-            const response = await request(app).get('/user');
-
-            expect(response.status).not.toBe(403);
-            expect(response.status).toBe(200);
-            expect(response.body.result).toBe(true);
-            expect(response.body.users).toBeInstanceOf(Array);
-            expect(response.body.users.length).toBeGreaterThanOrEqual(0);
-
-        } catch (error) {
-
-            throw error; // Rejeter l'erreur pour s'assurer que le test échoue
-        }
-
-    });
-
-
-
-    test('should register a new user', async () => {
+    test('should create a new user', async () => {
         const response = await request(app)
-            .post('/user/register')
+            .post('/user')
             .send({
-                firstname: 'John',
-                lastname: 'Doe',
-                email: 'john.doe@example.com',
+                email: 'test@example.com',
                 password: 'password123',
-                username: 'johndoe'
+                firstname: 'John',
+                lastname: 'Doe'
             });
 
-        expect(response.status).toBe(200);
+        expect(response.status).toBe(201);
         expect(response.body.result).toBe(true);
-        expect(response.body.user).toHaveProperty('username', 'johndoe');
+        expect(response.body).toHaveProperty('token');
     });
 
-    test('should login a user', async () => {
+    test('should get user token', async () => {
         const user = new User({
+            email: 'test@example.com',
+            password: bcrypt.hashSync('password123', 10),
             firstname: 'John',
             lastname: 'Doe',
-            email: 'john.doe@example.com',
-            password: bcrypt.hashSync('password123', 10),
-            username: 'johndoe',
             token: uid2(32)
         });
         await user.save();
 
         const response = await request(app)
-            .post('/user/login')
+            .post('/user/token')
             .send({
-                username: 'johndoe',
+                email: 'test@example.com',
                 password: 'password123'
             });
 
         expect(response.status).toBe(200);
         expect(response.body.result).toBe(true);
-        expect(response.body.user).toHaveProperty('username', 'johndoe');
+        expect(response.body).toHaveProperty('token', user.token);
     });
 
-    test('should get events by user ID', async () => {
-        const event = new Event({ /* propriétés de l'événement */ });
-        await event.save();
+    test('should delete a user', async () => {
+        const user = new User({
+            email: 'test@example.com',
+            password: bcrypt.hashSync('password123', 10),
+            firstname: 'John',
+            lastname: 'Doe',
+            token: uid2(32)
+        });
+        await user.save();
 
         const response = await request(app)
-            .get(`/user/event/${event._id}`)
-            .send({ token: 'sometoken' });
+            .delete('/user')
+            .send({ token: user.token });
 
         expect(response.status).toBe(200);
         expect(response.body.result).toBe(true);
-        expect(response.body.events).toHaveProperty('_id', event._id.toString());
+        expect(response.body.message).toBe('User and related datas deleted');
+    });
+
+    test('should get user gardens', async () => {
+        const user = new User({
+            email: 'test@example.com',
+            password: bcrypt.hashSync('password123', 10),
+            firstname: 'John',
+            lastname: 'Doe',
+            token: uid2(32),
+            gardens: []
+        });
+        await user.save();
+
+        const response = await request(app)
+            .get('/user/gardens')
+            .send({ token: user.token });
+
+        expect(response.status).toBe(200);
+        expect(response.body.result).toBe(true);
+        expect(response.body).toHaveProperty('gardens');
+    });
+
+    test('should update user gardens', async () => {
+        const user = new User({
+            email: 'test@example.com',
+            password: bcrypt.hashSync('password123', 10),
+            firstname: 'John',
+            lastname: 'Doe',
+            token: uid2(32),
+            gardens: []
+        });
+        await user.save();
+
+        const garden = new Garden({
+            name: 'Test Garden',
+            description: 'A beautiful garden',
+            coordinates: {
+                longitude: 12.34,
+                latitude: 56.78
+            },
+        });
+        await garden.save();
+
+        const response = await request(app)
+            .put(`/user/garden/${garden._id}`)
+            .send({ token: user.token });
+
+        expect(response.status).toBe(200);
+        expect(response.body.result).toBe(true);
+        expect(response.body.message).toMatch(/Garden .* (added|removed)/);
     });
 });

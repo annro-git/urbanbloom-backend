@@ -1,25 +1,32 @@
 const express = require('express')
+const uid2 = require('uid2')
 const router = express.Router()
+const bcrypt = require('bcrypt')
 const User = require('../models/users')
-const Event = require('../models/events')
 const Garden = require('../models/gardens')
-const uid2 = require('uid2');
-const bcrypt = require('bcrypt');
 
 const { checkReq, isFound } = require('../helpers/errorHandlers.js')
 
 // * Create User
 router.post('/', async (req, res) => {
-    const { email, password, firstname, lastname} = req.body
+    const { email, password, firstname, lastname, username} = req.body
 
     // Error 400 : Missing or empty field(s)
-    if(!checkReq([email, password], res)) return
+    if(!checkReq([email, password, username], res)) return
 
-    // Error 409 if email already exists
-    const isUsed = await User.findOne({ email : String(email).toLowerCase() })
-    if(isUsed){
+    // Error 409 : Email already used
+    const emailUsed = await User.findOne({ email : String(email).toLowerCase() })
+    if(emailUsed){
         res.status(409)
-        res.json({ result: false, error: 'Email already exists'})
+        res.json({ result: false, error: 'Email already used'})
+        return
+    }
+
+    // Error 409 : Username already used
+    const usernameUsed = await User.findOne({ username: String(username).toLowerCase() })
+    if(usernameUsed){
+        res.status(409)
+        res.json({ result: false, error: 'Username already used'})
         return
     }
 
@@ -27,6 +34,7 @@ router.post('/', async (req, res) => {
     const newUser = new User({
         email,
         password: hash,
+        username,
         firstname,
         lastname,
         token: uid2(32),
@@ -35,9 +43,9 @@ router.post('/', async (req, res) => {
     try {
         await newUser.save()
         res.status(201)
-        res.json({ result: true, token: newUser.token, message: `User ${newUser.email} created` })
+        res.json({ result: true, token: newUser.token, message: `User ${username} created` })
     } catch (error) {
-        // Error 400 if model datas aren't validated
+        // Error 400 : User can't be saved
         res.status(400)
         res.json({ result: false, error})
         return
@@ -45,8 +53,8 @@ router.post('/', async (req, res) => {
 })
 
 //* Get User Token
-router.post('/token', async (req, res) => {
-    const { email, password } = req.body
+router.get('/token', async (req, res) => {
+    const { email, password } = req.headers
 
     // Error 400 : Missing or empty field(s)
     if(!checkReq([email, password], res)) return
@@ -111,7 +119,7 @@ router.delete('/', async (req, res) => {
             try {
                 await Garden.save()
             } catch (error) {
-                // Error 400 can't update Garden
+                // Error 400 : Garden can't be updated
                 res.status(400)
                 res.json({ result: false, error })
                 return
@@ -124,7 +132,7 @@ router.delete('/', async (req, res) => {
         res.json({ result: true, message: 'User and related datas deleted' })
         return   
     } catch (error) {
-        // Error 400 can't delete User
+        // Error 400 : User can't be deleted
         res.status(400)
         res.json({ result: false, error})
         return
@@ -134,7 +142,7 @@ router.delete('/', async (req, res) => {
 
 // * Get User Gardens
 router.get('/gardens', async (req, res) => {
-    const { token } = req.body
+    const { token } = req.query
 
     // Error 400 : Missing or empty field(s)
     if(!checkReq([token], res)) return
@@ -158,7 +166,7 @@ router.put('/garden/:id', async (req, res) => {
     try {
         await Garden.findById(id)
     } catch (error) {
-        // Error 400 if garden objectid isn't validated
+        // Error 400 : Garden can't be read
         res.status(400)
         res.json({ result: false, error})
         return
@@ -178,6 +186,5 @@ router.put('/garden/:id', async (req, res) => {
         return
     }
 })
-
 
 module.exports = router

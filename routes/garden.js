@@ -389,56 +389,68 @@ router.put('/:gardenId/user', async (req,res) => {
         // Error 404 : Not found
         if(!isFound('User', member, res)) return
 
-    const save = async (verb) => {
+    const updateMember = async (add) => {
+        if (!add){
+            member.gardens = member.gardens.filter(garden => String(garden) !== String(garden._id))
+            await member.save()
+            return
+        }
+        member.gardens.push(garden)
+        await member.save()
+    }
+
+    const save = async (message, add) => {
         try {
             await garden.save()
-            return { result: true, message: `Member ${verb}`}
+            await updateMember(add)
+            return { result: true, message }
         } catch (error) {
             return { result: false, error }
         }
     }
+
     if(!garden.owners.find(owner => String(owner) === String(user._id))){
-// "token user" !== owner
+// // "token user" !== owner
         if(String(member._id) !== String(user._id)){
-// "token user" !== owner | "token user" !== "username user"
+// // "token user" !== owner | "token user" !== "username user"
             if(!garden.members.find(e => String(e) === String(member._id))){
-// "token user" !== owner | "token user" !== "username user" | "username user" !== member
+// // "token user" !== owner | "token user" !== "username user" | "username user" !== member
                 garden.members.push(member)
-                res.json(await save('added (a)'))
+                res.json(await save(`${member.username} joined ${garden.name} (A)`, true))
                 return
             }
-// "token user" !== owner | "token user" !== "username user" | "username user" === member
+// // "token user" !== owner | "token user" !== "username user" | "username user" === member
             garden.members = garden.members.filter(e => String(e) !== String(member._id))
-            res.json(await save('deleted (a)'))
+            res.json(await save(`${member.username} left ${garden.name} (A)`, false))
             return
         }
-// "token user" !== owner | "token user" === "username user"
-        if(!garden.members.find(member => String(member) === String(user._id))){
-// "token user" !== owner | "token user" === "username user" | "token user" !== member
-            garden.members.push(user)
-            res.json(await save('added (b)'))
-            return
-        }
-// "token user" !== owner | "token user" === "username user" | "token user" === member
-        garden.members = garden.members.filter(member => String(member) !== String(user._id))
-        res.json(await save('deleted (b)'))
-        return
-    }
-// "token user" === owner
-    if(String(member._id) !== String(user._id)){
-// "token user" === owner | "token user" !== "username user"
+// // "token user" !== owner | "token user" === "username user"
         if(!garden.members.find(e => String(e) === String(member._id))){
-// "token user" === owner | "token user" !== "username user" | "username user" !== member
-            garden.members.push(member)
-            res.json(await save('added (c)'))
+// // "token user" !== owner | "token user" === "username user" | "token user" !== member
+            garden.members.push(user)
+            res.json(await save(`${user.username} joined ${garden.name} (B)`, true))
             return
         }
-// "token user" === owner | "token user" !== "username user" | "username user" === member
-        garden.members = garden.members.filter(e => String(e) !== String(member._id))
-        res.json(await save('deleted (c)'))
+// // "token user" !== owner | "token user" === "username user" | "token user" === member
+        garden.members = garden.members.filter(e => String(e) !== String(user._id))
+        res.json(await save(`${user.username} left ${garden.name} (B)`, false))
         return
     }
-// "token user" === owner | "token user" === "username user"
+// // "token user" === owner
+    if(String(member._id) !== String(user._id)){
+// // "token user" === owner | "token user" !== "username user"
+        if(!garden.members.find(e => String(e) === String(member._id))){
+// // "token user" === owner | "token user" !== "username user" | "username user" !== member
+            garden.members.push(member)
+            res.json(await save(`${user.username} added ${member.username} to ${garden.name} (C)`, true))
+            return
+        }
+// // "token user" === owner | "token user" !== "username user" | "username user" === member
+        garden.members = garden.members.filter(e => String(e) !== String(member._id))
+        res.json(await save(`${user.username} removed ${member.username} from ${garden.name} (C)`, false))
+        return
+    }
+// // "token user" === owner | "token user" === "username user"
     res.status(403)
     res.json({ result: false, error: 'Owner can\'t revoke is member status'})
 })

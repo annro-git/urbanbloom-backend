@@ -10,6 +10,12 @@ const UserSchema = mongoose.Schema({
             message: 'Invalid email'
         }
     },
+    username: {
+        type: String,
+        required: [true, 'Missing username'],
+        lowercase: true,
+        minlength: 6
+    },
     password: {
         type: String,
         required: [true, 'Missing password']

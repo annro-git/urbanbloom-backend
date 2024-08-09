@@ -155,7 +155,7 @@ const GardenSchema = mongoose.Schema({
         minlength: 1
     },
     filters: {
-        interest: {
+        interests: {
             type: Array,
             of: {
                 type: String,

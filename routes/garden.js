@@ -340,43 +340,54 @@ router.put('/:gardenId/owner', async (req, res) => {
     if(!garden.owners.find(owner => String(owner) === String(user._id))){
         res.status(403)
         res.json({ result: false, error: 'User is not an owner' })
+        return
     }
 
     const target = await User.findOne({ username })
     // Error 404 : Not found
     if(!isFound('Target', target, res)) return
     // Error 403 : Target is not an member
-    if(!garden.members.find(member => String(member) === String(user._id))){
+    if(!garden.members.find(member => String(member) === String(target._id))){
         res.status(403)
-        res.json({ result: false, error: 'Target is not an member' })
-    }
-
-    const { owners } = garden
-    if(!owners.find(owner => String(owner) === String(target._id))){
-        owners.push(target)
-        try {
-           await garden.save()
-           res.status(200)
-           res.json({ result: true, message: 'Target added to owners'}) 
-        } catch (error) {
-            res.status(400)
-            res.json({ result: false, error })
-        }
+        res.json({ result: false, error: 'User is not an member' })
         return
     }
-    owners = owners.filter(owner => String(owner) !== String(target._id))
-    try {
-        await garden.save()
-        res.status(200)
-        res.json({ result: true, message: 'Target removed to owners'}) 
-     } catch (error) {
-         res.status(400)
-         res.json({ result: false, error })
-     }
+
+    const save = async(message) => {
+        try {
+            await garden.save()
+            return { result: true, message }
+        } catch (error) {
+            return { result: false, error }
+        }
+    }
+
+    if(String(user._id) !== String(target._id)){
+//  // user !== target
+        if(!garden.owners.find(owner => String(owner) === String(target._id))){
+//  // user !== target | target !== owner
+            garden.owners.push(target)
+            res.json(await save(`${ username } added to ${ garden.name } owners`))
+            return
+        }
+//  // user !== target | target === owner
+        garden.owners = garden.owners.filter(owner => String(owner) !== String(target._id))
+        res.json(await save(`${ username } removed from ${ garden.name } owners`))
+        return
+    }
+// user === target
+    if(garden.owners.length > 1){
+//  // user === target | user isn't last owner
+        garden.owners = garden.owners.filter(owner => String(owner) !== String(user._id))
+        res.json(await save(`${ username } revoked is owner status`))
+        return
+    }
+    res.status(403)
+    res.json({ result: false, error: 'Last owner can\'t revoke his status' })
 })
 
 // * Update Garden Member
-router.put('/:gardenId/user', async (req,res) => {
+router.put('/:gardenId/member', async (req,res) => {
     const { gardenId } = req.params
     const { token, username } = req.body
     // Error 400 : Missing or empty field(s)
@@ -390,24 +401,19 @@ router.put('/:gardenId/user', async (req,res) => {
     // Error 404 : Not found
     if(!isFound('User', user, res)) return
 
-    let member = await User.findOne({ username })
+    let target = await User.findOne({ username })
         // Error 404 : Not found
-        if(!isFound('User', member, res)) return
-
-    const updateMember = async (add) => {
-        if (!add){
-            member.gardens = member.gardens.filter(garden => String(garden) !== String(garden._id))
-            await member.save()
-            return
-        }
-        member.gardens.push(garden)
-        await member.save()
-    }
+        if(!isFound('User', target, res)) return
 
     const save = async (message, add) => {
         try {
             await garden.save()
-            await updateMember(add)
+            if(!add){
+                target.gardens = target.gardens.filter(garden => String(garden) !== String(garden._id))
+            } else {
+                target.gardens.push(garden)
+            }
+            await target.save()
             return { result: true, message }
         } catch (error) {
             return { result: false, error }
@@ -415,49 +421,56 @@ router.put('/:gardenId/user', async (req,res) => {
     }
 
     if(!garden.owners.find(owner => String(owner) === String(user._id))){
-// // "token user" !== owner
-        if(String(member._id) !== String(user._id)){
-// // "token user" !== owner | "token user" !== "username user"
-            if(!garden.members.find(e => String(e) === String(member._id))){
-// // "token user" !== owner | "token user" !== "username user" | "username user" !== member
-                garden.members.push(member)
-                res.json(await save(`${member.username} joined ${garden.name} (A)`, true))
+// // user !== owner
+        if(String(target._id) !== String(user._id)){
+// // user !== owner | user !== target
+            if(!garden.members.find(e => String(e) === String(target._id))){
+// // user !== owner | user !== target | target !== member
+                garden.members.push(target)
+                res.json(await save(`${target.username} joined ${garden.name} (A)`, true))
                 return
             }
-// // "token user" !== owner | "token user" !== "username user" | "username user" === member
-            garden.members = garden.members.filter(e => String(e) !== String(member._id))
-            res.json(await save(`${member.username} left ${garden.name} (A)`, false))
+// // user !== owner | user !== target | target === member
+            garden.members = garden.members.filter(e => String(e) !== String(target._id))
+            res.json(await save(`${target.username} left ${garden.name} (A)`, false))
             return
         }
-// // "token user" !== owner | "token user" === "username user"
-        if(!garden.members.find(e => String(e) === String(member._id))){
-// // "token user" !== owner | "token user" === "username user" | "token user" !== member
+// // user !== owner | user === target
+        if(!garden.members.find(e => String(e) === String(target._id))){
+// // user !== owner | user === target | user !== member
             garden.members.push(user)
             res.json(await save(`${user.username} joined ${garden.name} (B)`, true))
             return
         }
-// // "token user" !== owner | "token user" === "username user" | "token user" === member
+// // user !== owner | user === target | user === member
         garden.members = garden.members.filter(e => String(e) !== String(user._id))
         res.json(await save(`${user.username} left ${garden.name} (B)`, false))
         return
     }
-// // "token user" === owner
-    if(String(member._id) !== String(user._id)){
-// // "token user" === owner | "token user" !== "username user"
-        if(!garden.members.find(e => String(e) === String(member._id))){
-// // "token user" === owner | "token user" !== "username user" | "username user" !== member
-            garden.members.push(member)
-            res.json(await save(`${user.username} added ${member.username} to ${garden.name} (C)`, true))
+// // user === owner
+    if(String(target._id) !== String(user._id)){
+// // user === owner | user !== target
+        if(!garden.members.find(e => String(e) === String(target._id))){
+// // user === owner | user !== target | target !== member
+            garden.members.push(target)
+            res.json(await save(`${user.username} added ${target.username} to ${garden.name} (C)`, true))
             return
         }
-// // "token user" === owner | "token user" !== "username user" | "username user" === member
-        garden.members = garden.members.filter(e => String(e) !== String(member._id))
-        res.json(await save(`${user.username} removed ${member.username} from ${garden.name} (C)`, false))
+// // user === owner | user !== target | target === member
+        garden.members = garden.members.filter(e => String(e) !== String(target._id))
+        res.json(await save(`${user.username} removed ${target.username} from ${garden.name} (C)`, false))
         return
     }
-// // "token user" === owner | "token user" === "username user"
+// // user === owner | user === target
     res.status(403)
     res.json({ result: false, error: 'Owner can\'t revoke is member status'})
 })
+
+// * Delete Garden
+router.delete('/:gardenId', async (req, res) => {
+
+})
+
+// * Get Garden
 
 module.exports = router

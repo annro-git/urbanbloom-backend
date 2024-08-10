@@ -3,7 +3,8 @@ const User = require('../models/users')
 const Garden = require('../models/gardens')
 const router = express.Router()
 
-const { checkReq, isFound, isMember } = require('../helpers/errorHandlers')
+const { checkReq, isFound, userCredential } = require('../helpers/errorHandlers')
+const { transformLikes } = require('../helpers/transformLikes')
 
 const strToArr = (str) => str.replace(/\[|\]|\'|\"/g, '').split(',').map(e => e.trim())
 
@@ -63,10 +64,8 @@ router.post('/:gardenId/post/', async (req, res) => {
     const user = await User.findOne({ token })
     // Error 404 : Not found
     if(!isFound('User', user, res)) return
-
-    const member = await Garden.findOne({ members: user._id })
     // Error 403 : User is not a member
-    if(!isMember(member, res)) return
+    if(!userCredential('members', user, garden, res)) return
 
     const newPost = {
         owner: user._id,
@@ -78,7 +77,7 @@ router.post('/:gardenId/post/', async (req, res) => {
     garden.posts.push(newPost)
     
     try {
-        await Garden.save()
+        await garden.save()
         res.status(201)
         res.json({ result: true, message: 'Post created'})
     } catch (error) {
@@ -103,31 +102,84 @@ router.get('/:gardenId/posts', async (req, res) => {
     const user = await User.findOne({ token })
     // Error 404 : Not found
     if(!isFound('User', user, res)) return
-
-    const member = await Garden.findOne({ members: user._id })
     // Error 403 : User is not a member
-    if(!isMember(member, res)) return
+    if(!userCredential('members', user, garden, res)) return
 
     // Filter user ids
     await garden.populate('posts.owner', ['username', '-_id'])
+    await garden.populate('posts.likes.owner', ['username', '-_id'])
+
+    // Transform posts likes
+    const transformLikes = (likes) => {
+        const result = {}
+        likes.forEach(like => {
+            if(!result[like.likeType]){
+                result[like.likeType] = []
+                result[like.likeType].push(like.owner.username)
+                return
+            }
+            result[like.likeType].push(like.owner.username)
+        })
+        return result
+    }
 
     const posts = garden.posts.map(post => {
         return ({
             owner: post.owner.username,
             createdAt: post.createdAt,
             title: post.title,
-            test: post.text,
+            text: post.text,
             repliesCount: post.replies.length,
-            likes: post.likes.map(like => {
-                return ({
-                    type: like.likeType,
-                    likeCount: like.owner.length
-                })
-            })
+            likes: transformLikes(post.likes)
         })
     })
 
     res.json({ result: true, posts })
+
+})
+
+// * Get Garden Post
+router.get('/:gardenId/post/:postId', async (req, res) => {
+    const { gardenId, postId } = req.params
+    const { token } = req.headers
+    // Error 400 : Missing or empty field(s)
+    if(!checkReq([gardenId, postId, token], res)) return
+
+    const garden = await Garden.findById(gardenId)
+    // Error 404 : Not found
+    if(!isFound('Garden', garden, res)) return
+
+    let post = garden.posts.find(e => String(e._id) === String(postId))
+    // Error 404 : Not found
+    if(!isFound('Post', post, res)) return
+
+    const user = await User.findOne({ token })
+    // Error 404 : Not found
+    if(!isFound('User', user, res)) return
+    // Error 403 : User is not a member
+    if(!userCredential('members', user, garden, res)) return
+
+    await garden.populate('posts.owner', ['username', '-_id'])
+    await garden.populate('posts.replies.owner', ['username', '-_id'])
+    await garden.populate('posts.likes.owner', ['username', '-_id'])
+
+    post = {
+        owner: post.owner.username,
+        createdAt: post.createdAt,
+        title: post.title,
+        text: post.text,
+        pictures: post.pictures,
+        replies: post.replies.map(reply => {
+            return({
+                owner: reply.owner.username,
+                createdAt: reply.createdAt,
+                text: reply.text,
+            })
+        }),
+        likes: transformLikes(post.likes)
+    }
+
+    res.json({ result: true, post })
 
 })
 
@@ -149,10 +201,8 @@ router.post('/:gardenId/post/:postId', async (req, res) => {
     const user = await User.findOne({ token })
     // Error 404 : Not found
     if(!isFound('User', user, res)) return
-
-    const member = await Garden.findOne({ members: user._id })
     // Error 403 : User is not a member
-    if(!isMember(member, res)) return
+    if(!userCredential('members', user, garden, res)) return
 
     const newReply = {
         owner: user._id,
@@ -189,10 +239,8 @@ router.get('/:gardenId/post/:postId', async (req, res) => {
     const user = await User.findOne({ token })
     // Error 404 : Not found
     if(!isFound('User', user, res)) return
-
-    const member = await Garden.findOne({ members: user._id })
     // Error 403 : User is not a member
-    if(!isMember(member, res)) return
+    if(!userCredential('members', user, garden, res)) return
 
     await garden.populate(`posts.replies.owner`)
 
@@ -226,10 +274,8 @@ router.put('/:gardenId/post/:postId/like', async (req, res) => {
     const user = await User.findOne({ token })
     // Error 404 : Not found
     if(!isFound('User', user, res)) return
-
-    const member = await Garden.findOne({ members: user._id })
     // Error 403 : User is not a member
-    if(!isMember(member, res)) return
+    if(!userCredential('members', user, garden, res)) return
 
     const like = post.likes.find(like => String(like.owner) === String(user._id))
     const save = async (verb) => {
@@ -272,13 +318,11 @@ router.post('/:gardenId/event/', async (req, res) => {
     const user = await User.findOne({ token })
     // Error 404 : Not found
     if(!isFound('User', user, res)) return
-
-    const member = await Garden.findOne({ members: user._id })
     // Error 403 : User is not a member
-    if(!isMember(member, res)) return
+    if(!userCredential('members', user, garden, res)) return
 
     const newEvent = {
-        owner: member._id,
+        owner: user._id,
         title,
         text,
         pictures,
@@ -313,10 +357,8 @@ router.get('/:gardenId/events', async (req, res) => {
     const user = await User.findOne({ token })
     // Error 404 : Not found
     if(!isFound('User', user, res)) return
-
-    const member = await Garden.findOne({ members: user._id })
     // Error 403 : User is not a member
-    if(!isMember(member, res)) return
+    if(!userCredential('members', user, garden, res)) return
 
     res.json({ result: true, events: garden.events })
 
@@ -333,25 +375,17 @@ router.put('/:gardenId/owner', async (req, res) => {
     // Error 404 : Not found
     if(!isFound('Garden', garden, res)) return
 
-    const user = await User.findOne({ token })
+    const owner = await User.findOne({ token })
+    // Error 404 : Not found
+    if(!isFound('User', owner, res)) return
+    // Error 403 : Not owner
+    if(!userCredential('owners', owner, garden, res)) return
+
+    const user = await User.findOne({ username })
     // Error 404 : Not found
     if(!isFound('User', user, res)) return
-    // Error 403 : User is not an owner
-    if(!garden.owners.find(owner => String(owner) === String(user._id))){
-        res.status(403)
-        res.json({ result: false, error: 'User is not an owner' })
-        return
-    }
-
-    const target = await User.findOne({ username })
-    // Error 404 : Not found
-    if(!isFound('Target', target, res)) return
-    // Error 403 : Target is not an member
-    if(!garden.members.find(member => String(member) === String(target._id))){
-        res.status(403)
-        res.json({ result: false, error: 'User is not an member' })
-        return
-    }
+    // Error 403 : Not member
+    if(!userCredential('members', user, garden, res)) return
 
     const save = async(message) => {
         try {
@@ -361,27 +395,26 @@ router.put('/:gardenId/owner', async (req, res) => {
             return { result: false, error }
         }
     }
-
-    if(String(user._id) !== String(target._id)){
-//  // user !== target
-        if(!garden.owners.find(owner => String(owner) === String(target._id))){
-//  // user !== target | target !== owner
-            garden.owners.push(target)
+    if(owner !== user){
+        if(!garden.owners.find(owner => String(owner) === String(user._id))){
+            // user is not Owner
+            garden.owners.push(user)
             res.json(await save(`${ username } added to ${ garden.name } owners`))
             return
         }
-//  // user !== target | target === owner
-        garden.owners = garden.owners.filter(owner => String(owner) !== String(target._id))
+        // user is Owner
+        garden.owners = garden.owners.filter(owner => String(owner) !== String(user._id))
         res.json(await save(`${ username } removed from ${ garden.name } owners`))
         return
     }
-// user === target
+    // owner === user
     if(garden.owners.length > 1){
-//  // user === target | user isn't last owner
+        // owner is not the last Owner
         garden.owners = garden.owners.filter(owner => String(owner) !== String(user._id))
         res.json(await save(`${ username } revoked is owner status`))
         return
     }
+    // Error 403 : owner is the last Owner
     res.status(403)
     res.json({ result: false, error: 'Last owner can\'t revoke his status' })
 })
@@ -402,8 +435,8 @@ router.put('/:gardenId/member', async (req,res) => {
     if(!isFound('User', user, res)) return
 
     let target = await User.findOne({ username })
-        // Error 404 : Not found
-        if(!isFound('User', target, res)) return
+    // Error 404 : Not found
+    if(!isFound('User', target, res)) return
 
     const save = async (message, add) => {
         try {
@@ -420,50 +453,35 @@ router.put('/:gardenId/member', async (req,res) => {
         }
     }
 
-    if(!garden.owners.find(owner => String(owner) === String(user._id))){
-// // user !== owner
-        if(String(target._id) !== String(user._id)){
-// // user !== owner | user !== target
-            if(!garden.members.find(e => String(e) === String(target._id))){
-// // user !== owner | user !== target | target !== member
-                garden.members.push(target)
-                res.json(await save(`${target.username} joined ${garden.name} (A)`, true))
-                return
-            }
-// // user !== owner | user !== target | target === member
-            garden.members = garden.members.filter(e => String(e) !== String(target._id))
-            res.json(await save(`${target.username} left ${garden.name} (A)`, false))
+    if(user !== target){
+        // Error 403 : user must be owner to act
+        if(!userCredential('owners', user, garden, res)) return
+        // Error 403 : owner only allowed to remove
+        if(garden.members.some(member => String(member) === String(target._id))){
+            garden.members = garden.members.filter(member => String(member) !== String(target._id))
+            res.status(200)
+            res.json(await save(`${target.username} removed`))
             return
         }
-// // user !== owner | user === target
-        if(!garden.members.find(e => String(e) === String(target._id))){
-// // user !== owner | user === target | user !== member
-            garden.members.push(user)
-            res.json(await save(`${user.username} joined ${garden.name} (B)`, true))
-            return
-        }
-// // user !== owner | user === target | user === member
-        garden.members = garden.members.filter(e => String(e) !== String(user._id))
-        res.json(await save(`${user.username} left ${garden.name} (B)`, false))
+        res.status(403)
+        res.json({ result: false, error: 'Owner can\'t add member'})
         return
     }
-// // user === owner
-    if(String(target._id) !== String(user._id)){
-// // user === owner | user !== target
-        if(!garden.members.find(e => String(e) === String(target._id))){
-// // user === owner | user !== target | target !== member
+    if(!garden.owners.some(owner => String(owner) === String(user._id))){
+        if(!garden.members.some(member => String(member) === String(user._id))){
             garden.members.push(target)
-            res.json(await save(`${user.username} added ${target.username} to ${garden.name} (C)`, true))
+            res.status(200)
+            res.json(await save(`${target.username} has joined`))
             return
         }
-// // user === owner | user !== target | target === member
-        garden.members = garden.members.filter(e => String(e) !== String(target._id))
-        res.json(await save(`${user.username} removed ${target.username} from ${garden.name} (C)`, false))
+        garden.members = garden.members.filter(member => String(member) !== String(user._id))
+        res.status(200)
+        res.json(await save(`${target.username} has left`))
         return
     }
-// // user === owner | user === target
     res.status(403)
-    res.json({ result: false, error: 'Owner can\'t revoke is member status'})
+    res.json({ result: false, error: 'Owners are members'})
+
 })
 
 // * Delete Garden
@@ -481,11 +499,7 @@ router.delete('/:gardenId', async (req, res) => {
     // Error 404 : Not found
     if(!isFound('User', user, res)) return
     // Error 403 : User is not an owner
-    if(!garden.owners.find(owner => String(owner) === String(user._id))){
-        res.status(403)
-        res.json({ result: false, error: 'User is not an owner' })
-        return
-    }
+    if(!userCredential('members', user, garden, res)) return
 
     const { members } = garden
     await garden.populate('members')
@@ -502,7 +516,5 @@ router.delete('/:gardenId', async (req, res) => {
     }
 
 })
-
-// * Get Garden
 
 module.exports = router

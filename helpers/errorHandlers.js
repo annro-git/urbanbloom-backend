@@ -16,14 +16,6 @@ const isFound = (name, type, res) => {
     return true
 }
 
-const isMember = (user, garden, res) => {
-    if(!garden.members.some(member => String(member) === String(user._id))){
-        res.status(403)
-        res.json({ result: false, error: 'User is not a member' })
-    }
-    return true
-}
-
 const userCredential = (group, user, garden, res) => {  
     if(group === 'admins'){
         if(!user.isAdmin){

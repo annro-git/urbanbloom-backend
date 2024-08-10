@@ -4,7 +4,7 @@ const Garden = require('../models/gardens')
 const router = express.Router()
 
 const { checkReq, isFound, userCredential } = require('../helpers/errorHandlers')
-const { transformLikes } = require('../helpers/transformLikes')
+const { parseLikes } = require('../helpers/parseLikes')
 
 const strToArr = (str) => str.replace(/\[|\]|\'|\"/g, '').split(',').map(e => e.trim())
 
@@ -109,8 +109,8 @@ router.get('/:gardenId/posts', async (req, res) => {
     await garden.populate('posts.owner', ['username', '-_id'])
     await garden.populate('posts.likes.owner', ['username', '-_id'])
 
-    // Transform posts likes
-    const transformLikes = (likes) => {
+    // Parse posts likes
+    const parseLikes = (likes) => {
         const result = {}
         likes.forEach(like => {
             if(!result[like.likeType]){
@@ -130,7 +130,7 @@ router.get('/:gardenId/posts', async (req, res) => {
             title: post.title,
             text: post.text,
             repliesCount: post.replies.length,
-            likes: transformLikes(post.likes)
+            likes: parseLikes(post.likes)
         })
     })
 
@@ -176,7 +176,7 @@ router.get('/:gardenId/post/:postId', async (req, res) => {
                 text: reply.text,
             })
         }),
-        likes: transformLikes(post.likes)
+        likes: parseLikes(post.likes)
     }
 
     res.json({ result: true, post })

@@ -1,4 +1,4 @@
-const transformLikes = (likes) => {
+const parseLikes = (likes) => {
     const result = {}
 
     likes.forEach(like => {
@@ -13,4 +13,4 @@ const transformLikes = (likes) => {
     return result
 }
 
-module.exports = { transformLikes }
+module.exports = { parseLikes }

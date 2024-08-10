@@ -391,7 +391,7 @@ router.put('/:gardenId/member', async (req,res) => {
     const { gardenId } = req.params
     const { token, username } = req.body
     // Error 400 : Missing or empty field(s)
-    if(!checkReq([gardenId, token], res)) return
+    if(!checkReq([gardenId, token, username], res)) return
 
     const garden = await Garden.findById(gardenId)
     // Error 404 : Not found
@@ -468,6 +468,38 @@ router.put('/:gardenId/member', async (req,res) => {
 
 // * Delete Garden
 router.delete('/:gardenId', async (req, res) => {
+    const { gardenId } = req.params
+    const { token } = req.body
+    // Error 400 : Missing or empty field(s)
+    if(!checkReq([gardenId, token], res)) return
+
+    const garden = await Garden.findOne({ _id: gardenId })
+    // Error 404 : Not found
+    if(!isFound('Garden', garden, res)) return
+
+    const user = await User.findOne({ token })
+    // Error 404 : Not found
+    if(!isFound('User', user, res)) return
+    // Error 403 : User is not an owner
+    if(!garden.owners.find(owner => String(owner) === String(user._id))){
+        res.status(403)
+        res.json({ result: false, error: 'User is not an owner' })
+        return
+    }
+
+    const { members } = garden
+    await garden.populate('members')
+    members.map(async(member) => {
+        await User.findOneAndUpdate({ _id: member._id }, { $pullAll: { gardens: [garden._id] } })
+    })
+    try {
+        await Garden.deleteOne({ _id: garden._id })
+        res.status(200)
+        res.json({ result: true, message: 'Garden deleted' })
+    } catch (error) {
+        res.status(400)
+        res.json({ result: false, error })
+    }
 
 })
 

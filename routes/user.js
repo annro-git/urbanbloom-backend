@@ -89,37 +89,49 @@ router.delete('/', async (req, res) => {
     const { gardens } = user
     if(gardens.length > 0){
         await user.populate('gardens')
-        gardens.forEach(async (garden) => {
-            const { posts, events, members, owners } = garden
-            if(posts.length > 0){
-                posts.forEach(post => {
-                    const { replies, likes } = post
-                    // remove all user replies
-                    replies = replies.filter(reply => String(reply.owner) !== String(user._id))
-                    // remove all user likes
-                    likes = likes.filter(like => String(like.owner) !== String(user._id))
+        gardens.map(async (garden) => {
+            const owner = garden.owners.find(e => String(e) === String(user._id))
+            if(owner && garden.owners.length === 1){
+                // delete garden if last owner
+                try {
+                    await Garden.findOneAndDelete({ _id: garden})
+                } catch (error) {
+                    res.status(400)
+                    res.json({ result: false, error })
+                }
+                return
+            }
+            garden.posts.map(post => {
+                return ({
+                    // delete user replies
+                    replies: post.replies.filter(reply => String(reply.owner) !== String(user._id)),
+                    // delete user likes
+                    likes: post.likes.filter(like => String(like.owner) !== String(user._id))
                 })
-                // remove all user posts
-                posts = posts.filter(post => String(post.owner) !== String(user._id))
-            }
-            if(events.length > 0){
-                events.forEach(event => {
-                    const { subscribers } = event
-                    // remove all user subscriptions
-                    subscribers = subscribers.filter(subscriber => String(subscriber) !== String(user._id)) 
+            })
+            // delete user posts
+            garden.posts = garden.posts.filter(post => String(post.owner) !== String(user._id))
+
+            garden.events.map(event => {
+                return({
+                    // delete user subscriptions
+                    subscribers: event.subscribers.filter(subscriber => String(subscriber) !== String(user._id)) 
                 })
-                // remove all user events
-                events = events.filter(event => String(event.owner) !== String(user._id))
+            })
+            // delete user events
+            garden.events = garden.events.filter(event => String(event.owner) !== String(user._id))
+
+            if(garden.members.length > 1) {
+                // update garden members
+                garden.members = garden.members.filter(member => String(member) !== String(user._id))
             }
-            if(members.length > 0) {
-                // remove from garden members
-                members = members.filter(member => String(member) !== String(user._id))
+            if(owner) {
+                // update garden owners
+                garden.owners = garden.owners.filter(e => String(e) !== String(user._id))
             }
-                // TODO owner / last owner ?
             try {
-                await Garden.save()
+                await garden.save()
             } catch (error) {
-                // Error 400 : Garden can't be updated
                 res.status(400)
                 res.json({ result: false, error })
                 return

@@ -16,14 +16,26 @@ const isFound = (name, type, res) => {
     return true
 }
 
-const isMember = (user, res) => {
-    if(!user) {
+const userCredential = (group, user, garden, res) => {  
+    if(group === 'admins'){
+        if(!user.isAdmin){
+            res.status(403)
+            res.json({ result: false, error: 'Run, you fools!'})
+            return false
+        }
+        return true
+    }
+    if(!group || !garden[group]){
+        res.status(404)
+        res.json({ result: false, error: 'Group not found'})
+        return false
+    }
+    if(!garden[group].some(e => String(e) === String(user._id))){
         res.status(403)
-        res.json({ result: false, error: 'User is not a member' })
+        res.json({ result: false, error: `${user.username} is not ${group}` })
+        return false
     }
     return true
 }
 
-const isOwnerOrAdmin = () => {} // TODO
-
-module.exports = { checkReq, isFound, isMember, isOwnerOrAdmin }
+module.exports = { checkReq, isFound, isMember, userCredential }

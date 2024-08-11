@@ -114,7 +114,7 @@ router.get('/:gardenId/posts', async (req, res) => {
             owner: post.owner.username,
             createdAt: post.createdAt,
             title: post.title,
-            test: post.text,
+            text: post.text,                                   // corrected from test: post.text,
             repliesCount: post.replies.length,
             likes: post.likes.map(like => {
                 return ({
@@ -153,11 +153,11 @@ router.post('/:gardenId/post/:postId', async (req, res) => {
     if (!isMember(member, res)) return
 
     const newReply = {
-        owner: member._id,
+        owner: user._id,                                        // corrected from owner: member._id
         text,
         date: new Date(),
     }
-    try {
+    /* try {
         post.replies.push(newReply)
         await garden.save()
         res.json({ result: true, message: `Reply added to post ${postId}` })
@@ -165,11 +165,12 @@ router.post('/:gardenId/post/:postId', async (req, res) => {
         res.status(400)
         res.json({ result: false, error })
         return
-    }
+    } */
 
 
     //En utilisant updateOne permet d'alléger la mémoire en ne récupérant pas tout le document
-    /* try {
+
+    try {
         const updateResult = await Garden.updateOne(
             { _id: gardenId, 'posts._id': postId },
             { $push: { 'posts.$.replies': newReply } }
@@ -183,7 +184,7 @@ router.post('/:gardenId/post/:postId', async (req, res) => {
         res.json({ result: true, message: `Reply added to post ${postId}` });
     } catch (error) {
         res.status(400).json({ result: false, error });
-    } */
+    }
 
 })
 

@@ -42,7 +42,14 @@ const UserSchema = mongoose.Schema({
             ref: 'gardens'
         }
     },
-    events: {
+    createdEvents: {
+        type: Array,
+        of: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'events'
+        },
+    },
+    submittedEvents: {
         type: Array,
         of: {
             type: mongoose.Schema.Types.ObjectId,

@@ -460,7 +460,7 @@ router.get('/:gardenId/filters', async (req, res) => {
     }
 });
 
-// * Update Garden Owner
+// * Delete Garden
 router.put('/:gardenId/owner', async (req, res) => {
     const { gardenId } = req.params;
     const { token } = req.body;

@@ -421,7 +421,7 @@ router.get('/:gardenId/events', async (req, res) => {
 });
 
 
-
+// * Get Garden Filters
 router.get('/:gardenId/filters', async (req, res) => {
     const { gardenId } = req.params;
 
@@ -561,5 +561,6 @@ router.put('/:gardenId/member', async (req, res) => {
     res.status(200);
     res.json({ result: true, message: 'Member deleted' });
 });
+
 
 module.exports = router

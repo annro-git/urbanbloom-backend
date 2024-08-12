@@ -503,5 +503,63 @@ router.put('/:gardenId/owner', async (req, res) => {
 
     
 // * Delete Garden Member
+router.delete('/:gardenId/member', async (req, res) => {
+    const { gardenId } = req.params;
+    const { token } = req.body;
+
+    // Error 400 : Missing or empty field(s)
+    if (!checkReq([gardenId, token], res)) return;
+
+    const garden = await Garden.findById(gardenId);
+    // Error 404 : Not found
+    if (!isFound('Garden', garden, res)) return;
+
+    const user = await User.findOne({ token });
+    // Error 404 : Not found
+    if (!isFound('User', user, res)) return;
+
+    // Error 403 : User is not a member
+    if (!garden.members.find(member => String(member) === String(user._id))) {
+        res.status(403);
+        return res.json({ result: false, error: 'User is not a member' });
+    }
+
+    // Update members
+    await User.findOneAndUpdate({ _id: user._id }, { $pullAll: { gardens: [garden._id] } });
+    await Garden.findOneAndUpdate({ _id: garden._id }, { $pullAll: { members: [user._id] } });
+
+    res.status(200);
+    res.json({ result: true, message: 'Member deleted' });
+});
+
+// * Update Garden Member
+router.put('/:gardenId/member', async (req, res) => {
+    const { gardenId } = req.params;
+    const { token } = req.body;
+
+    // Error 400 : Missing or empty field(s)
+    if (!checkReq([gardenId, token], res)) return;
+
+    const garden = await Garden.findById(gardenId);
+    // Error 404 : Not found
+    if (!isFound('Garden', garden, res)) return;
+
+    const user = await User.findOne({ token });
+    // Error 404 : Not found
+    if (!isFound('User', user, res)) return;
+
+    // Error 403 : User is not a member
+    if (!garden.members.find(member => String(member) === String(user._id))) {
+        res.status(403);
+        return res.json({ result: false, error: 'User is not a member' });
+    }
+
+    // Update members
+    await User.findOneAndUpdate({ _id: user._id }, { $pullAll: { gardens: [garden._id] } });
+    await Garden.findOneAndUpdate({ _id: garden._id }, { $pullAll: { members: [user._id] } });
+
+    res.status(200);
+    res.json({ result: true, message: 'Member deleted' });
+});
 
 module.exports = router

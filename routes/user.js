@@ -154,7 +154,7 @@ router.delete('/', async (req, res) => {
 
 // * Get User Gardens
 router.get('/gardens', async (req, res) => {
-    const { token } = req.query
+    const { token } = req.body
 
     // Error 400 : Missing or empty field(s)
     if(!checkReq([token], res)) return
@@ -171,7 +171,7 @@ router.get('/gardens', async (req, res) => {
 // * Get User events
 router.get('/user/:userId/events', async (req, res) => {
     const { userId } = req.params;
-    const { token } = req.query;
+    const { token } = req.body;
 
       // Error 400 : Missing or empty field(s)
       if(!checkReq([token], res)) return
@@ -262,7 +262,7 @@ router.put('/events/:eventId', async (req, res) => {
 
 // * Register user to event
 router.post('/events/:eventId/register', async (req, res) => {
-    const { token } = req.query;
+    const { token } = req.body;
     const { eventId } = req.params;
     const { userId } = req.body;
 
@@ -300,7 +300,7 @@ router.post('/events/:eventId/register', async (req, res) => {
 
 // * Unregister user from event
 router.delete('/events/:eventId/unregister', async (req, res) => {
-    const { token } = req.query;
+    const { token } = req.body;
     const { eventId } = req.params;
     const { userId } = req.body;
 

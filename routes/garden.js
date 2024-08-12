@@ -343,7 +343,6 @@ router.post('/:gardenId/event/', async (req, res) => {
     if (!checkReq([gardenId, token, title, text, pictures, date], res)) return
 
     const garden = await Garden.findById(gardenId)
-    const garden = await Garden.findById(gardenId)
     // Error 404 : Not found
     if (!isFound('Garden', garden, res)) return
 
@@ -447,42 +446,46 @@ router.get('/:gardenId/filters', async (req, res) => {
 
 // * Update Garden Owner
 router.put('/:gardenId/owner', async (req, res) => {
-    const { gardenId } = req.params
-    const { token, username } = req.body
+    const { gardenId } = req.params;
+    const { token } = req.body;
+
     // Error 400 : Missing or empty field(s)
-    if (!checkReq([gardenId, token], res)) return
+    if (!checkReq([gardenId, token], res)) return;
 
-    const garden = await Garden.findById(gardenId)
+    const garden = await Garden.findById(gardenId);
     // Error 404 : Not found
-    if (!isFound('Garden', garden, res)) return
+    if (!isFound('Garden', garden, res)) return;
 
-    const user = await User.findOne({ token })
+    const user = await User.findOne({ token });
     // Error 404 : Not found
-    if (!isFound('User', user, res)) return
+    if (!isFound('User', user, res)) return;
+
     // Error 403 : User is not an owner
-    if(!userCredential('members', user, garden, res)) return
-
-    const { members } = garden
-    await garden.populate('members')
-    members.map(async(member) => {
-        await User.findOneAndUpdate({ _id: member._id }, { $pullAll: { gardens: [garden._id] } })
-    })
-    try {
-        await Garden.deleteOne({ _id: garden._id })
-        res.status(200)
-        res.json({ result: true, message: 'Garden deleted' })
-    } catch (error) {
-        res.status(400)
-        res.json({ result: false, error })
-    }
-
-})
     if (!garden.owners.find(owner => String(owner) === String(user._id))) {
-        res.status(403)
-        res.json({ result: false, error: 'User is not an owner' })
+        res.status(403);
+        return res.json({ result: false, error: 'User is not an owner' });
     }
-})
 
+    // Update members
+    await garden.populate('members');
+    const { members } = garden;
+    for (const member of members) {
+        await User.findOneAndUpdate({ _id: member._id }, { $pullAll: { gardens: [garden._id] } });
+    }
+
+    // Delete garden
+    try {
+        await Garden.deleteOne({ _id: garden._id });
+        res.status(200);
+        res.json({ result: true, message: 'Garden deleted' });
+    } catch (error) {
+        res.status(400);
+        res.json({ result: false, error });
+    }
+});
+
+
+    
 // * Delete Garden Member
 
 module.exports = router

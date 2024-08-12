@@ -165,7 +165,25 @@ router.get('/gardens', async (req, res) => {
 
     res.json({ result: true, gardens: user.gardens })
 
-})
+});
+
+
+// * Get User events
+router.get('/user/:userId/events', async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        const user = await User.findById(userId).populate('events');
+        if (!user) {
+            return res.status(404).json({ result: false, error: 'User not found' });
+        }
+
+        const events = user.events;
+        res.status(200).json({ result: true, events });
+    } catch (error) {
+        res.status(500).json({ result: false, error: error.message });
+    }
+});
 
 // * Update User Gardens
 router.put('/garden/:id', async (req, res) => {
@@ -197,6 +215,8 @@ router.put('/garden/:id', async (req, res) => {
         res.json({ result: true, message: `Garden ${ id } added`})
         return
     }
-})
+});
+
+
 
 module.exports = router

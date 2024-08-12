@@ -42,6 +42,13 @@ const UserSchema = mongoose.Schema({
             ref: 'gardens'
         }
     },
+    events: {
+        type: Array,
+        of: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'events'
+        },
+    },
     bio: {
         type: String,
     },

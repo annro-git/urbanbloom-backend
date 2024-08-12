@@ -138,7 +138,10 @@ const GardenSchema = mongoose.Schema({
         maxlength: 300,
     },
     posts: [PostSchema],
-    events: [EventSchema],
+    events: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'events'
+    }],
     members: {
         type: Array,
         of: {

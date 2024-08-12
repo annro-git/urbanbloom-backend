@@ -1,11 +1,14 @@
+mongoose = require('mongoose')
 const express = require('express')
 const uid2 = require('uid2')
 const router = express.Router()
 const bcrypt = require('bcrypt')
 const User = require('../models/users')
 const Garden = require('../models/gardens')
+const Event = require('../models/events')
 
 const { checkReq, isFound } = require('../helpers/errorHandlers.js')
+const { mongo } = require('mongoose')
 
 // * Create User
 router.post('/', async (req, res) => {

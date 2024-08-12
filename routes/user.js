@@ -54,26 +54,28 @@ router.post('/', async (req, res) => {
 
 //* Get User Token
 router.get('/token', async (req, res) => {
-    const { email, password } = req.headers
+    const { email, password } = req.headers;
 
     // Error 400 : Missing or empty field(s)
-    if(!checkReq([email, password], res)) return
+    if (!checkReq([email, password], res)) return;
 
-    const user = await User.findOne({ email })
+    try {
+        const user = await User.findOne({ email });
 
-    // Error 404 : Not found
-    if(!isFound('User', user, res)) return
+        // Error 404 : Not found
+        if (!isFound('User', user, res)) return;
 
-    // Error 403 : Mismatching email / password pair
-    if(!bcrypt.compareSync(password, user.password)){
-        res.status(403)
-        res.json({ result: false, error: 'Mismatching email / password pair' })
-        return
+        // Error 403 : Incorrect password
+        if (!bcrypt.compareSync(password, user.password)) {
+            return res.status(403).json({ result: false, error: 'Incorrect password' });
+        }
+
+        res.json({ result: true, token: user.token });
+    } catch (error) {
+        // Error 500 : Internal Server Error
+        res.status(500).json({ result: false, error: 'Internal Server Error' });
     }
-
-    res.json({ result: true, token: user.token })
-
-})
+});
 
 // * Delete User
 router.delete('/', async (req, res) => {

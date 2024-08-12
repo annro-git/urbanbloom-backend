@@ -155,7 +155,57 @@ router.delete('/', async (req, res) => {
         return
     }
 
-})
+});
+
+// * Create event
+router.post('/events', async (req, res) => {
+    const { token, title, description, date, hour, location, garden } = req.body;
+
+    // Error 400 : Missing or empty field(s)
+    if (!checkReq([token, title, description, date, hour, location, garden], res)) return;
+
+    // Validate date format (JJ/MM/AAAA)
+    const dateRegex = /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/;
+    if (!dateRegex.test(date)) {
+        return res.status(400).json({ result: false, error: 'Invalid date format! Expected format is JJ/MM/AAAA.' });
+    }
+
+    // Validate hour format (hh:mm)
+    const hourRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+    if (!hourRegex.test(hour)) {
+        return res.status(400).json({ result: false, error: 'Invalid hour format! Expected format is hh:mm.' });
+    }
+
+    // Convert date to ISO format (YYYY-MM-DD)
+    const [day, month, year] = date.split('/');
+    const isoDate = `${year}-${month}-${day}T${hour}:00.000Z`;
+
+    try {
+        const user = await User.findOne({ token });
+        // Error 404 : Not found
+        if (!isFound('User', user, res)) return;
+
+        const gardenExists = await Garden.findById(garden);
+        // Error 404 : Not found
+        if (!isFound('Garden', gardenExists, res)) return;
+
+        const newEvent = new Event({
+            title,
+            description,
+            date: isoDate,
+            hour,
+            location,
+            garden: gardenExists._id,
+            owner: user._id,
+        });
+
+        await newEvent.save();
+
+        res.status(201).json({ result: true, message: 'Event created' });
+    } catch (error) {
+        res.status(500).json({ result: false, error: error.message });
+    }
+});
 
 // * Get User Gardens
 router.get('/gardens', async (req, res) => {
@@ -201,7 +251,7 @@ router.get('/:userId/events', async (req, res) => {
 
 
 // * Update User Gardens
-router.put('/garden/:id', async (req, res) => {
+router.put('/garden/:gardenId', async (req, res) => {
     const { id } = req.params
     const { token } = req.body
     

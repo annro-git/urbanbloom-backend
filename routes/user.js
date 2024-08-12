@@ -174,7 +174,7 @@ router.get('/gardens', async (req, res) => {
 
 
 // * Get User events
-router.get('/user/:userId/events', async (req, res) => {
+router.get('/:userId/events', async (req, res) => {
     const { userId } = req.params;
     const { token } = req.body;
 

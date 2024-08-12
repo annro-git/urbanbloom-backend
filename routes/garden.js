@@ -337,49 +337,42 @@ router.put('/:gardenId/post/:postId/like', async (req, res) => {
 
 // * Create an Event
 router.post('/:gardenId/event/', async (req, res) => {
-    const { gardenId } = req.params
-    const { token, title, text, pictures, date } = req.body
+    const { gardenId } = req.params;
+    const { token, title, text, pictures, date } = req.body;
+    
     // Error 400 : Missing or empty field(s)
-    if (!checkReq([gardenId, token, title, text, pictures, date], res)) return
+    if (!checkReq([gardenId, token, title, text, pictures, date], res)) return;
 
-    const garden = await Garden.findById(gardenId)
+    const garden = await Garden.findById(gardenId);
     // Error 404 : Not found
-    if (!isFound('Garden', garden, res)) return
+    if (!isFound('Garden', garden, res)) return;
 
-    const user = await User.findOne({ token })
+    const user = await User.findOne({ token });
     // Error 404 : Not found
-    if(!isFound('User', user, res)) return
-    if (!isFound('User', user, res)) return
+    if (!isFound('User', user, res)) return;
 
-    const member = await Garden.findOne({ members: user._id })
     // Error 403 : User is not a member
-    if(!userCredential('members', user, garden, res)) return
-    if (!isMember(member, res)) return
+    if (!userCredential('members', user, garden, res)) return;
 
     const newEvent = {
         owner: user._id,
         title,
         text,
         pictures,
-        date: new Date(),
-    }
+        date: new Date(date),
+    };
 
-    garden = garden.events.push(newEvent)
+    garden.events.push(newEvent);
 
     try {
-        await garden.save()
-        await Garden.updateOne({ _id: gardenId }, { $push: { events: newEvent } })
-        res.status(201)
-        res.json({ result: true, message: 'Event created' })
+        await garden.save();
+        res.status(201).json({ result: true, message: 'Event created' });
     } catch (error) {
-        res.status(400)
-        res.json({ result: false, error })
-        return
+        res.status(400).json({ result: false, error: error.message });
     }
+});
 
-})
-
-// * Get Garden Events
+/* // * Get Garden Events
 router.get('/:gardenId/events', async (req, res) => {
     const { gardenId } = req.params
     const { token } = req.body
@@ -402,7 +395,30 @@ router.get('/:gardenId/events', async (req, res) => {
 
     res.json({ result: true, events: garden.events })
 
-})
+}); */
+
+// * Get Garden Events
+
+router.get('/:gardenId/events', async (req, res) => {
+    const { gardenId } = req.params;
+    const { token } = req.body;
+    
+    // Error 400 : Missing or empty field(s)
+    if (!checkReq([gardenId, token], res)) return;
+
+    const garden = await Garden.findById(gardenId);
+    // Error 404 : Not found
+    if (!isFound('Garden', garden, res)) return;
+
+    const user = await User.findOne({ token });
+    // Error 404 : Not found
+    if (!isFound('User', user, res)) return;
+
+    // Error 403 : User is not a member
+    if (!userCredential('members', user, garden, res)) return;
+
+    res.json({ result: true, events: garden.events });
+});
 
 
 

@@ -171,6 +171,15 @@ router.get('/gardens', async (req, res) => {
 // * Get User events
 router.get('/user/:userId/events', async (req, res) => {
     const { userId } = req.params;
+    const { token } = req.query;
+
+      // Error 400 : Missing or empty field(s)
+      if(!checkReq([token], res)) return
+
+    // Vérifier que l'ID utilisateur est un ID MongoDB valide
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+        return res.status(400).json({ result: false, error: 'Invalid user ID' });
+    }
 
     try {
         const user = await User.findById(userId).populate('events');
@@ -184,6 +193,7 @@ router.get('/user/:userId/events', async (req, res) => {
         res.status(500).json({ result: false, error: error.message });
     }
 });
+
 
 // * Update User Gardens
 router.put('/garden/:id', async (req, res) => {
@@ -217,6 +227,114 @@ router.put('/garden/:id', async (req, res) => {
     }
 });
 
+// * Update User Events
+router.put('/events/:eventId', async (req, res) => {
+    const { id } = req.params
+    const { token } = req.body
+    
+    // Error 400 : Missing or empty field(s)
+    if(!checkReq([id, token], res)) return
+
+    try {
+        await Event.findById(id)
+    } catch (error) {
+        // Error 400 : Event can't be read
+        res.status(400)
+        res.json({ result: false, error})
+        return
+    }
+
+    const user = await User.findOne({ token })
+    // Error 404 : Not found
+    if(!isFound('User', user, res)) return
+
+    if(user.events.some(e => String(e) === id)){
+        await User.updateOne({ token }, { $pullAll: { events: [id] } })
+        res.json({ result: true, message: `Event ${ id } removed`})
+        return
+    } else {
+        await User.updateOne({ token }, { $push: { events: id } })
+        res.json({ result: true, message: `Event ${ id } added`})
+        return
+    }
+});
+
+
+// * Register user to event
+router.post('/events/:eventId/register', async (req, res) => {
+    const { token } = req.query;
+    const { eventId } = req.params;
+    const { userId } = req.body;
+
+    if (!checkReq([token, userId], res)) return
+
+    // Vérifier que l'ID utilisateur est un ID MongoDB valide
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+        return res.status(400).json({ result: false, error: 'Invalid user ID' });
+    }
+
+    try {
+        const event = await Event.findById(eventId);
+        if (!event) {
+            return res.status(404).json({ result: false, error: 'Event not found' });
+        }
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ result: false, error: 'User not found' });
+        }
+
+        // Ajouter l'utilisateur à l'événement
+        event.subscribers.push(user._id);
+        await event.save();
+
+        // Ajouter l'événement à l'utilisateur
+        user.events.push(event._id);
+        await user.save();
+
+        res.status(200).json({ result: true, message: 'User registered to event' });
+    } catch (error) {
+        res.status(500).json({ result: false, error: error.message });
+    }
+});
+
+// * Unregister user from event
+router.delete('/events/:eventId/unregister', async (req, res) => {
+    const { token } = req.query;
+    const { eventId } = req.params;
+    const { userId } = req.body;
+
+    if (!checkReq([token, userId], res)) return
+
+    // Vérifier que l'ID utilisateur est un ID MongoDB valide
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+        return res.status(400).json({ result: false, error: 'Invalid user ID' });
+    }
+
+    try {
+        const event = await Event.findById(eventId);
+        if (!event) {
+            return res.status(404).json({ result: false, error: 'Event not found' });
+        }
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ result: false, error: 'User not found' });
+        }
+
+        // Retirer l'utilisateur de l'événement
+        event.subscribers = event.subscribers.filter(subscriber => String(subscriber) !== userId);
+        await event.save();
+
+        // Retirer l'événement de l'utilisateur
+        user.events = user.events.filter(event => String(event) !== eventId);
+        await user.save();
+
+        res.status(200).json({ result: true, message: 'User unregistered from event' });
+    } catch (error) {
+        res.status(500).json({ result: false, error: error.message });
+    }
+});
 
 
 module.exports = router

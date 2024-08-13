@@ -403,7 +403,7 @@ router.post('/:userId/events/:eventId/register', async (req, res) => {
         await event.save();
 
         // Ajouter l'événement à l'utilisateur
-        user.submittedEvents.push(event._id);
+        user.subscribedEvents.push(event._id);
         await user.save();
 
         res.status(200).json({ result: true, message: 'User registered to event' });
@@ -441,7 +441,7 @@ router.delete('/:userId/events/:eventId/unregister', async (req, res) => {
         await event.save();
 
         // Retirer l'événement de l'utilisateur
-        user.events = user.submittedEvents.filter(event => String(event) !== eventId);
+        user.events = user.subscribedEvents.filter(event => String(event) !== eventId);
         await user.save();
 
         res.status(200).json({ result: true, message: 'User unregistered from event' });

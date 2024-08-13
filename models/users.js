@@ -49,7 +49,7 @@ const UserSchema = mongoose.Schema({
             ref: 'events'
         },
     },
-    submittedEvents: {
+    subscribedEvents: {
         type: Array,
         of: {
             type: mongoose.Schema.Types.ObjectId,

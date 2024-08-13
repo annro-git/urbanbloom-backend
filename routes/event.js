@@ -10,10 +10,6 @@ const { checkReq, isFound } = require('../helpers/errorHandlers.js');
 
 // Get all events
 router.get('/', async (req, res) => {
-    const { token } = req.body;
-
-    if (!checkReq(res, token)) return;
-
     try {
         const events = await Event.find();
         res.json(events);
@@ -21,3 +17,19 @@ router.get('/', async (req, res) => {
         res.status(500).json({ message: err.message });
     }
 });
+
+
+
+// Add user to event
+router.patch('/:id/subscribe', async (req, res) => {
+
+    const { token } = req.body;
+    if (!checkReq(token)) return res.status(400).json({ message: 'Missing token' });
+
+    try {
+        const event = await Event.findById(req.params.id);
+        const user  = await User.findById(req._constructedToken.id);
+
+        if (!isFound(event)) return res.status(404).json({ message: 'Event not found' });
+
+        if (!isFound(user)) return res.status(404).json({ message: 'User not found' });

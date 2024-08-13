@@ -196,7 +196,7 @@ router.post('/events', async (req, res) => {
             hour,
             location,
             garden: gardenExists._id,
-            owner: user._id,
+            creator: user._id,
         });
 
         await newEvent.save();

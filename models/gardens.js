@@ -149,7 +149,7 @@ const GardenSchema = mongoose.Schema({
             ref: 'users'
         }
     },
-    owners: {
+    owner: {
         type: Array,
         of: {
             type: mongoose.Schema.Types.ObjectId,

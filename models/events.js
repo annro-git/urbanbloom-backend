@@ -28,6 +28,11 @@ const EventSchema = new mongoose.Schema({
         ref: 'gardens',
         required: true
     },
+    creator: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'users',
+        required: true
+    },
     subscribers: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'users',

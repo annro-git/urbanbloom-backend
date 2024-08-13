@@ -8,7 +8,7 @@ const Garden = require('../models/gardens')
 const Event = require('../models/events')
 
 const { checkReq, isFound } = require('../helpers/errorHandlers.js')
-const { mongo } = require('mongoose')
+// const { mongo } = require('mongoose')
 
 // * Create User
 router.post('/', async (req, res) => {
@@ -79,7 +79,7 @@ router.get('/token', async (req, res) => {
         res.status(500).json({ result: false, error: 'Internal Server Error' });
     }
 });
-
+/* 
 // * Delete User
 router.delete('/', async (req, res) => {
     const { token } = req.body
@@ -95,8 +95,8 @@ router.delete('/', async (req, res) => {
     if(gardens.length > 0){
         await user.populate('gardens')
         gardens.map(async (garden) => {
-            const owner = garden.owners.find(e => String(e) === String(user._id))
-            if(owner && garden.owners.length === 1){
+            const owner = garden.owner.find(e => String(e) === String(user._id))
+            if(owner && garden.owner.length === 1){
                 // delete garden if last owner
                 try {
                     await Garden.findOneAndDelete({ _id: garden})
@@ -131,8 +131,8 @@ router.delete('/', async (req, res) => {
                 garden.members = garden.members.filter(member => String(member) !== String(user._id))
             }
             if(owner) {
-                // update garden owners
-                garden.owners = garden.owners.filter(e => String(e) !== String(user._id))
+                // update garden owner
+                garden.owner = garden.owner.filter(e => String(e) !== String(user._id))
             }
             try {
                 await garden.save()
@@ -155,11 +155,71 @@ router.delete('/', async (req, res) => {
         return
     }
 
+}); */
+
+// Delete User
+router.delete('/', async (req, res) => {
+    const { token } = req.headers;
+
+    // Error 400 : Missing or empty field(s)
+    if (!checkReq([token], res)) return;
+
+    const user = await User.findOne({ token });
+    // Error 404 : Not found
+    if (!isFound('User', user, res)) return;
+
+    const { gardens } = user;
+    if (gardens.length > 0) {
+        await user.populate('gardens');
+        for (const garden of gardens) {
+            if (String(garden.owner) === String(user._id)) {
+                // delete garden if the user is the owner
+                try {
+                    await Garden.findOneAndDelete({ _id: garden._id });
+                } catch (error) {
+                    res.status(400);
+                    res.json({ result: false, error });
+                    return;
+                }
+            } else {
+                garden.posts = garden.posts.filter(post => String(post.owner) !== String(user._id));
+                garden.posts.forEach(post => {
+                    post.replies = post.replies.filter(reply => String(reply.owner) !== String(user._id));
+                    post.likes = post.likes.filter(like => String(like.owner) !== String(user._id));
+                });
+
+                garden.events = garden.events.filter(event => String(event.owner) !== String(user._id));
+                garden.events.forEach(event => {
+                    event.subscribers = event.subscribers.filter(subscriber => String(subscriber) !== String(user._id));
+                });
+
+                garden.members = garden.members.filter(member => String(member) !== String(user._id));
+
+                try {
+                    await garden.save();
+                } catch (error) {
+                    res.status(400);
+                    res.json({ result: false, error });
+                    return;
+                }
+            }
+        }
+    }
+
+    try {
+        await User.deleteOne({ token });
+        res.json({ result: true, message: 'User and related data deleted' });
+    } catch (error) {
+        // Error 400 : User can't be deleted
+        res.status(400);
+        res.json({ result: false, error });
+    }
 });
 
 // * Create event
 router.post('/events', async (req, res) => {
-    const { token, title, description, date, hour, location, garden } = req.body;
+    const { title, description, date, hour, location, garden } = req.body;
+    const { token } = req.headers;
 
     // Error 400 : Missing or empty field(s)
     if (!checkReq([token, title, description, date, hour, location, garden], res)) return;
@@ -209,7 +269,7 @@ router.post('/events', async (req, res) => {
 
 // * Get User Gardens
 router.get('/gardens', async (req, res) => {
-    const { token } = req.body
+    const { token } = req.headers
 
     // Error 400 : Missing or empty field(s)
     if(!checkReq([token], res)) return
@@ -226,7 +286,7 @@ router.get('/gardens', async (req, res) => {
 // * Get User events
 router.get('/:userId/events', async (req, res) => {
     const { userId } = req.params;
-    const { token } = req.body;
+    const { token } = req.headers;
 
       // Error 400 : Missing or empty field(s)
       if(!checkReq([token], res)) return
@@ -253,7 +313,7 @@ router.get('/:userId/events', async (req, res) => {
 // * Update User Gardens
 router.put('/garden/:gardenId', async (req, res) => {
     const { id } = req.params
-    const { token } = req.body
+    const { token } = req.headers
     
     // Error 400 : Missing or empty field(s)
     if(!checkReq([id, token], res)) return
@@ -285,7 +345,7 @@ router.put('/garden/:gardenId', async (req, res) => {
 // * Update User Events
 router.put('/events/:eventId', async (req, res) => {
     const { id } = req.params
-    const { token } = req.body
+    const { token } = req.headers
     
     // Error 400 : Missing or empty field(s)
     if(!checkReq([id, token], res)) return
@@ -317,7 +377,7 @@ router.put('/events/:eventId', async (req, res) => {
 
 // * Register user to event
 router.post('/:userId/events/:eventId/register', async (req, res) => {
-    const { token } = req.body;
+    const { token } = req.headers;
     const { eventId, userId } = req.params;
 
     if (!checkReq([token, userId], res)) return
@@ -354,7 +414,7 @@ router.post('/:userId/events/:eventId/register', async (req, res) => {
 
 // * Unregister user from event
 router.delete('/:userId/events/:eventId/unregister', async (req, res) => {
-    const { token } = req.body;
+    const { token } = req.headers;
     const { eventId, userId } = req.params;
     
 

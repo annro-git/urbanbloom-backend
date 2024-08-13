@@ -3,57 +3,56 @@ const User = require('../models/users')
 const Garden = require('../models/gardens')
 const router = express.Router()
 
-const { checkReq, isFound, userCredential } = require('../helpers/errorHandlers')
+const { checkReq, isFound, userCredential, isMember } = require('../helpers/errorHandlers')
 const { parseLikes } = require('../helpers/parseLikes')
 
 const strToArr = (str) => str.replace(/\[|\]|\'|\"/g, '').split(',').map(e => e.trim())
 
 // * Create a Garden
 router.post('/', async (req, res) => {
-    const { latitude, longitude, name, description, token, interests, bonus } = req.body
+    const { latitude, longitude, name, description, interests, bonus } = req.body;
+    const { token } = req.headers;
     // Error 400 : Missing or empty field(s)
-    if (!checkReq([latitude, longitude, name, description, token, interests, bonus], res)) return
+    if (!checkReq([latitude, longitude, name, description, token, interests, bonus], res)) return;
 
-    const user = await User.findOne({ token })
+    const user = await User.findOne({ token });
     // Error 404 : Not found
-    if (!isFound('User', user, res)) return
+    if (!isFound('User', user, res)) return;
 
-    const owners = [user]
-    const members = [user]
-    const coordinates = { latitude, longitude }
-    const filters = { interests: strToArr(interests), bonus: strToArr(bonus) }
+    const owner = user;
+    const members = [user];
+    const coordinates = { latitude, longitude };
+    const filters = { interests: strToArr(interests), bonus: strToArr(bonus) };
 
     const newGarden = new Garden({
         coordinates,
         name,
         description,
-        owners,
+        owner,
         members,
         filters,
-    })
+    });
 
     try {
-        const response = await newGarden.save()
+        const response = await newGarden.save();
         if (!response) {
-            res.status(400)
-            res.json({ result: false, error: 'Failing to create new garden' })
+            res.status(400).json({ result: false, error: 'Failing to create new garden' });
+            return;
         }
-        await User.updateOne({ token }, { $push: { gardens: response._id } }) // add garden to user garden list
-        res.status(201)
-        res.json({ result: true, message: `Garden ${name} created and added to ${user.username} gardens` })
+        await User.updateOne({ token }, { $push: { gardens: response._id } }); // add garden to user garden list
+        res.status(201).json({ result: true, message: `Garden ${name} created and added to ${user.username} gardens` });
 
     } catch (error) {
-        res.status(400)
-        res.json({ result: false, error })
-        return
+        res.status(400).json({ result: false, error });
     }
+});
 
-})
 
 // * Create a Post
-router.post('/:gardenId/post/', async (req, res) => {
+router.post('/:gardenId/post', async (req, res) => {
     const { gardenId } = req.params
-    const { token, title, text, pictures } = req.body
+    const { title, text, pictures } = req.body
+    const { token } = req.headers
     // Error 400 : Missing or empty field(s)
     if (!checkReq([gardenId, token, title, text, pictures], res)) return
 
@@ -74,8 +73,6 @@ router.post('/:gardenId/post/', async (req, res) => {
         pictures,
     }
 
-    garden.posts.push(newPost)
-
     try {
         await garden.save()
         await Garden.updateOne({ _id: gardenId }, { $push: { posts: newPost } })
@@ -89,7 +86,7 @@ router.post('/:gardenId/post/', async (req, res) => {
 
 })
 
-// * Get Garden Posts
+// * Get Garden's Posts
 router.get('/:gardenId/posts', async (req, res) => {
     const { gardenId } = req.params
     const { token } = req.headers
@@ -102,7 +99,7 @@ router.get('/:gardenId/posts', async (req, res) => {
 
     const user = await User.findOne({ token })
     // Error 404 : Not found
-    if(!isFound('User', user, res)) return
+    if (!isFound('User', user, res)) return
     if (!isFound('User', user, res)) return
 
     const member = await Garden.findOne({ members: user._id })
@@ -117,7 +114,7 @@ router.get('/:gardenId/posts', async (req, res) => {
     const parseLikes = (likes) => {
         const result = {}
         likes.forEach(like => {
-            if(!result[like.likeType]){
+            if (!result[like.likeType]) {
                 result[like.likeType] = []
                 result[like.likeType].push(like.owner.username)
                 return
@@ -132,7 +129,7 @@ router.get('/:gardenId/posts', async (req, res) => {
             owner: post.owner.username,
             createdAt: post.createdAt,
             title: post.title,
-            text: post.text,                                   // corrected from text: post.text,
+            text: post.text,       
             repliesCount: post.replies.length,
             likes: parseLikes(post.likes)
         })
@@ -142,26 +139,26 @@ router.get('/:gardenId/posts', async (req, res) => {
 
 })
 
-// * Get Garden Post
+// * Get one Garden's Post
 router.get('/:gardenId/post/:postId', async (req, res) => {
     const { gardenId, postId } = req.params
     const { token } = req.headers
     // Error 400 : Missing or empty field(s)
-    if(!checkReq([gardenId, postId, token], res)) return
+    if (!checkReq([gardenId, postId, token], res)) return
 
     const garden = await Garden.findById(gardenId)
     // Error 404 : Not found
-    if(!isFound('Garden', garden, res)) return
+    if (!isFound('Garden', garden, res)) return
 
     let post = garden.posts.find(e => String(e._id) === String(postId))
     // Error 404 : Not found
-    if(!isFound('Post', post, res)) return
+    if (!isFound('Post', post, res)) return
 
     const user = await User.findOne({ token })
     // Error 404 : Not found
-    if(!isFound('User', user, res)) return
+    if (!isFound('User', user, res)) return
     // Error 403 : User is not a member
-    if(!userCredential('members', user, garden, res)) return
+    if (!userCredential('members', user, garden, res)) return
 
     await garden.populate('posts.owner', ['username', '-_id'])
     await garden.populate('posts.replies.owner', ['username', '-_id'])
@@ -174,7 +171,7 @@ router.get('/:gardenId/post/:postId', async (req, res) => {
         text: post.text,
         pictures: post.pictures,
         replies: post.replies.map(reply => {
-            return({
+            return ({
                 owner: reply.owner.username,
                 createdAt: reply.createdAt,
                 text: reply.text,
@@ -187,10 +184,11 @@ router.get('/:gardenId/post/:postId', async (req, res) => {
 
 })
 
-// * Create Post Reply
+// * Create Post's Reply
 router.post('/:gardenId/post/:postId', async (req, res) => {
     const { gardenId, postId } = req.params
-    const { token, text } = req.body
+    const { text } = req.body
+    const { token } = req.headers
     // Error 400 : Missing or empty field(s)
     if (!checkReq([gardenId, postId, token, text], res)) return
 
@@ -209,9 +207,9 @@ router.post('/:gardenId/post/:postId', async (req, res) => {
     if (!userCredential('members', user, garden, res)) return
 
     const newReply = {
-        owner: user._id,                                        // corrected from owner: user._id
+        owner: user._id,                         
         text,
-        date: new Date(),
+        createdAt: Date.now()
     }
     /* try {
         post.replies.push(newReply)
@@ -244,7 +242,7 @@ router.post('/:gardenId/post/:postId', async (req, res) => {
 
 })
 
-// * Get Garden Post Replies
+// * Get Post's Replies
 router.get('/:gardenId/post/:postId', async (req, res) => {
     const { gardenId, postId } = req.params
     const { token } = req.headers
@@ -261,12 +259,12 @@ router.get('/:gardenId/post/:postId', async (req, res) => {
 
     const user = await User.findOne({ token })
     // Error 404 : Not found
-    if(!isFound('User', user, res)) return
+    if (!isFound('User', user, res)) return
     if (!isFound('User', user, res)) return
 
     const member = await Garden.findOne({ members: user._id })
     // Error 403 : User is not a member
-    if(!userCredential('members', user, garden, res)) return
+    if (!userCredential('members', user, garden, res)) return
 
     await garden.populate(`posts.replies.owner`)
 
@@ -281,12 +279,13 @@ router.get('/:gardenId/post/:postId', async (req, res) => {
 
     res.json({ result: true, replies })
 
-})
+});
 
 // * Update Garden Post Like
 router.put('/:gardenId/post/:postId/like', async (req, res) => {
     const { gardenId, postId } = req.params
-    const { token, likeType } = req.body
+    const { likeType } = req.body
+    const { token } = req.headers
     // Error 400 : Missing or empty field(s)
     if (!checkReq([gardenId, postId, token, likeType], res)) return
 
@@ -300,12 +299,12 @@ router.put('/:gardenId/post/:postId/like', async (req, res) => {
 
     const user = await User.findOne({ token })
     // Error 404 : Not found
-    if(!isFound('User', user, res)) return
+    if (!isFound('User', user, res)) return
     if (!isFound('User', user, res)) return
 
     const member = await Garden.findOne({ members: user._id })
     // Error 403 : User is not a member
-    if(!userCredential('members', user, garden, res)) return
+    if (!userCredential('members', user, garden, res)) return
     if (!isMember(member, res)) return
 
     const like = post.likes.find(like => String(like.owner) === String(user._id))
@@ -335,11 +334,22 @@ router.put('/:gardenId/post/:postId/like', async (req, res) => {
 
 })
 
+
+
+
+
+
+
+
+
+// 13/08/2024
+
 // * Create an Event
 router.post('/:gardenId/event/', async (req, res) => {
     const { gardenId } = req.params;
-    const { token, title, text, pictures, date } = req.body;
-    
+    const { title, text, pictures, date } = req.body;
+    const { token } = req.headers;
+
     // Error 400 : Missing or empty field(s)
     if (!checkReq([gardenId, token, title, text, pictures, date], res)) return;
 
@@ -362,7 +372,7 @@ router.post('/:gardenId/event/', async (req, res) => {
         date: new Date(date),
     };
 
-    garden.events.push(newEvent);
+    garden.events.push(newEvent._id);
 
     try {
         await garden.save();
@@ -398,11 +408,10 @@ router.get('/:gardenId/events', async (req, res) => {
 }); */
 
 // * Get Garden Events
-
 router.get('/:gardenId/events', async (req, res) => {
     const { gardenId } = req.params;
-    const { token } = req.body;
-    
+    const { token } = req.headers;
+
     // Error 400 : Missing or empty field(s)
     if (!checkReq([gardenId, token], res)) return;
 
@@ -424,6 +433,10 @@ router.get('/:gardenId/events', async (req, res) => {
 // * Get Garden Filters
 router.get('/:gardenId/filters', async (req, res) => {
     const { gardenId } = req.params;
+    const { token } = req.headers;
+    
+    // Error 400 : Missing or empty field(s)
+    if (!checkReq([gardenId, token], res)) return;
 
     // Vérifie si l'ID est un ObjectId valide
     if (!mongoose.Types.ObjectId.isValid(gardenId)) {
@@ -463,7 +476,7 @@ router.get('/:gardenId/filters', async (req, res) => {
 // * Delete Garden
 router.put('/:gardenId/owner', async (req, res) => {
     const { gardenId } = req.params;
-    const { token } = req.body;
+    const { token } = req.headers;
 
     // Error 400 : Missing or empty field(s)
     if (!checkReq([gardenId, token], res)) return;
@@ -501,11 +514,11 @@ router.put('/:gardenId/owner', async (req, res) => {
 });
 
 
-    
+
 // * Delete Garden Member
 router.delete('/:gardenId/member', async (req, res) => {
     const { gardenId } = req.params;
-    const { token } = req.body;
+    const { token } = req.headers;
 
     // Error 400 : Missing or empty field(s)
     if (!checkReq([gardenId, token], res)) return;
@@ -535,7 +548,7 @@ router.delete('/:gardenId/member', async (req, res) => {
 // * Update Garden Member
 router.put('/:gardenId/member', async (req, res) => {
     const { gardenId } = req.params;
-    const { token } = req.body;
+    const { token } = req.headers;
 
     // Error 400 : Missing or empty field(s)
     if (!checkReq([gardenId, token], res)) return;

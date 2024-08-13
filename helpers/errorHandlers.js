@@ -38,4 +38,13 @@ const userCredential = (group, user, garden, res) => {
     return true
 }
 
-module.exports = { checkReq, isFound, userCredential }
+const isMember = (user, res) => {
+    if(!user){
+        res.status(401)
+        res.json({ result: false, error: 'Unauthorized' })
+        return false
+    }
+    return true
+}
+
+module.exports = { checkReq, isFound, isMember, userCredential }

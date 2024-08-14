@@ -27,7 +27,7 @@ const EventSchema = new mongoose.Schema({
         type: Date,
         default: new Date()
     },
-    text: {
+    description: {
         type: String,
         maxlength: 500,
         required: [true, 'Missing content']

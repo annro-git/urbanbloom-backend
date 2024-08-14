@@ -1,10 +1,14 @@
 const express = require('express')
 const User = require('../models/users')
 const Garden = require('../models/gardens')
-const router = express.Router()
+const Event = require('../models/events')
+const router = express.Router();
+const bcrypt = require('bcrypt')
+
 
 const { checkReq, isFound, userCredential, isMember } = require('../helpers/errorHandlers')
 const { parseLikes } = require('../helpers/parseLikes')
+
 
 const strToArr = (str) => str.replace(/\[|\]|\'|\"/g, '').split(',').map(e => e.trim())
 
@@ -19,10 +23,33 @@ router.post('/', async (req, res) => {
     // Error 404 : Not found
     if (!isFound('User', user, res)) return;
 
+    const allowedInterests = ['fruits', 'vegetables', 'flowers'];
+    const allowedBonuses = ['dogs', 'water', 'a11y'];
+
+    function validateInterests(providedInterests) {
+        if (!Array.isArray(providedInterests)) return false;
+        return providedInterests.every(interest => allowedInterests.includes(interest));
+    }
+
+    function validateBonuses(providedBonuses) {
+        if (!Array.isArray(providedBonuses)) return false;
+        return providedBonuses.every(bonus => allowedBonuses.includes(bonus));
+    }
+
+    if (!validateInterests(interests)) {
+        res.status(400).json({ result: false, error: 'Invalid interests' });
+        return;
+    }
+
+    if (!validateBonuses(bonus)) {
+        res.status(400).json({ result: false, error: 'Invalid bonuses' });
+        return;
+    }
+
     const owner = user;
     const members = [user];
     const coordinates = { latitude, longitude };
-    const filters = { interests: strToArr(interests), bonus: strToArr(bonus) };
+    const filters = { interests, bonus };
 
     const newGarden = new Garden({
         coordinates,
@@ -129,7 +156,7 @@ router.get('/:gardenId/posts', async (req, res) => {
             owner: post.owner.username,
             createdAt: post.createdAt,
             title: post.title,
-            text: post.text,       
+            text: post.text,
             repliesCount: post.replies.length,
             likes: parseLikes(post.likes)
         })
@@ -207,7 +234,7 @@ router.post('/:gardenId/post/:postId', async (req, res) => {
     if (!userCredential('members', user, garden, res)) return
 
     const newReply = {
-        owner: user._id,                         
+        owner: user._id,
         text,
         createdAt: Date.now()
     }
@@ -344,44 +371,6 @@ router.put('/:gardenId/post/:postId/like', async (req, res) => {
 
 // 13/08/2024
 
-// * Create an Event
-router.post('/:gardenId/event/', async (req, res) => {
-    const { gardenId } = req.params;
-    const { title, text, pictures, date } = req.body;
-    const { token } = req.headers;
-
-    // Error 400 : Missing or empty field(s)
-    if (!checkReq([gardenId, token, title, text, pictures, date], res)) return;
-
-    const garden = await Garden.findById(gardenId);
-    // Error 404 : Not found
-    if (!isFound('Garden', garden, res)) return;
-
-    const user = await User.findOne({ token });
-    // Error 404 : Not found
-    if (!isFound('User', user, res)) return;
-
-    // Error 403 : User is not a member
-    if (!userCredential('members', user, garden, res)) return;
-
-    const newEvent = {
-        owner: user._id,
-        title,
-        text,
-        pictures,
-        date: new Date(date),
-    };
-
-    garden.events.push(newEvent._id);
-
-    try {
-        await garden.save();
-        res.status(201).json({ result: true, message: 'Event created' });
-    } catch (error) {
-        res.status(400).json({ result: false, error: error.message });
-    }
-});
-
 /* // * Get Garden Events
 router.get('/:gardenId/events', async (req, res) => {
     const { gardenId } = req.params
@@ -426,7 +415,16 @@ router.get('/:gardenId/events', async (req, res) => {
     // Error 403 : User is not a member
     if (!userCredential('members', user, garden, res)) return;
 
-    res.json({ result: true, events: garden.events });
+    const populatedGarden = await garden.populate({
+        path: 'events',
+        populate: {
+            path: 'creator',
+            select: 'username ppURI'
+        }
+    })
+    const events = populatedGarden.events
+
+    res.json({ result: true, events });
 });
 
 
@@ -434,7 +432,7 @@ router.get('/:gardenId/events', async (req, res) => {
 router.get('/:gardenId/filters', async (req, res) => {
     const { gardenId } = req.params;
     const { token } = req.headers;
-    
+
     // Error 400 : Missing or empty field(s)
     if (!checkReq([gardenId, token], res)) return;
 
@@ -459,9 +457,9 @@ router.get('/:gardenId/filters', async (req, res) => {
         // Retourne les filtres du jardin
         res.status(200).json({
             result: true,
-            data: {
-                interests: garden.interests,
-                bonus: garden.bonus
+            filters: {
+                interests: garden.filters.interests,
+                bonus: garden.filters.bonus
             }
         });
     } catch (error) {
@@ -474,12 +472,13 @@ router.get('/:gardenId/filters', async (req, res) => {
 });
 
 // * Delete Garden
-router.put('/:gardenId/owner', async (req, res) => {
+router.delete('/:gardenId', async (req, res) => {
     const { gardenId } = req.params;
     const { token } = req.headers;
+    const { password } = req.body;  
 
     // Error 400 : Missing or empty field(s)
-    if (!checkReq([gardenId, token], res)) return;
+    if (!checkReq([gardenId, token, password], res)) return;
 
     const garden = await Garden.findById(gardenId);
     // Error 404 : Not found
@@ -489,8 +488,13 @@ router.put('/:gardenId/owner', async (req, res) => {
     // Error 404 : Not found
     if (!isFound('User', user, res)) return;
 
+    if (!bcrypt.compareSync(password, user.password)) {
+        res.status(403);
+        return res.json({ result: false, error: 'Wrong password' });
+    }
+
     // Error 403 : User is not an owner
-    if (!garden.owners.find(owner => String(owner) === String(user._id))) {
+    if (String(garden.owner) !== String(user._id)) {
         res.status(403);
         return res.json({ result: false, error: 'User is not an owner' });
     }
@@ -545,6 +549,8 @@ router.delete('/:gardenId/member', async (req, res) => {
     res.json({ result: true, message: 'Member deleted' });
 });
 
+
+/* 
 // * Update Garden Member
 router.put('/:gardenId/member', async (req, res) => {
     const { gardenId } = req.params;
@@ -573,7 +579,6 @@ router.put('/:gardenId/member', async (req, res) => {
 
     res.status(200);
     res.json({ result: true, message: 'Member deleted' });
-});
-
+}); */
 
 module.exports = router

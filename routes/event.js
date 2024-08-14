@@ -18,7 +18,18 @@ router.get('/', async (req, res) => {
     }
 });
 
+// Delete event
+router.delete('/:id', async (req, res) => {
+    try {
+        const event = await Event.findById(req.params.id);
+        if (!isFound(event)) return res.status(404).json({ message: 'Event not found' });
 
+        await Event.findByIdAndDelete(req.params.id);
+        res.json({ message: 'Event deleted' });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
 
 // Add user to event
 router.patch('/:id/subscribe', async (req, res) => {

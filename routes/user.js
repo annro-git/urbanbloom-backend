@@ -291,7 +291,7 @@ router.post('/event', async (req, res) => {
 
         await newEvent.save();
 
-        await User.updateOne({ _id: user._id }, { $push: { createdEvents: newEvent._id } });
+        await User.updateOne({ _id: user._id }, { $push: { createdEvents: newEvent._id, subscribedEvents: newEvent._id } });
         await Garden.updateOne({ _id: gardenExists._id }, { $push: { events: newEvent._id } });
 
         res.status(201).json({ result: true, message: 'Event created' });
@@ -322,8 +322,8 @@ router.put('/garden/:gardenId/join', async (req, res) => {
             return res.status(400).json({ result: false, error: 'User already in garden' });
         }
 
-        garden.members.push(user._id);
-        await garden.save();
+        await Garden.updateOne({ _id: garden._id }, { $push: { members: user._id } });
+        await User.updateOne({ _id: user._id }, { $push: { gardens: garden._id } });
 
         res.status(200).json({ result: true, message: 'User joined garden' });
     } catch (error) {
@@ -342,7 +342,10 @@ router.get('/gardens', async (req, res) => {
     // Error 404 : Not found
     if (!isFound('User', user, res)) return
 
-    res.json({ result: true, gardens: user.gardens })
+    const populatedUser = await user.populate('gardens')
+    const gardens = populatedUser.gardens
+
+    res.json({ result: true, gardens })
 
 });
 
@@ -361,12 +364,17 @@ router.get('/:userId/events', async (req, res) => {
     }
 
     try {
-        const user = await User.findById(userId).populate('events');
+        const user = await User.findById(userId)
         if (!user) {
             return res.status(404).json({ result: false, error: 'User not found' });
         }
 
-        const events = user.events;
+        await user.populate('createdEvents subscribedEvents');
+        const events = {
+            createdEvents: user.createdEvents,
+            subscribedEvents: user.subscribedEvents
+        };
+
         res.status(200).json({ result: true, events });
     } catch (error) {
         res.status(500).json({ result: false, error: error.message });
@@ -374,69 +382,86 @@ router.get('/:userId/events', async (req, res) => {
 });
 
 
-// * Update User Gardens
+// * Update User's Gardens
 router.put('/garden/:gardenId', async (req, res) => {
-    const { id } = req.params
-    const { token } = req.headers
+    const { gardenId } = req.params;
+    const { token } = req.headers;
 
     // Error 400 : Missing or empty field(s)
-    if (!checkReq([id, token], res)) return
+    if (!checkReq([gardenId, token], res)) return;
 
+    let garden;
     try {
-        await Garden.findById(id)
+        garden = await Garden.findById(gardenId);
     } catch (error) {
         // Error 400 : Garden can't be read
-        res.status(400)
-        res.json({ result: false, error })
-        return
+        res.status(400).json({ result: false, error: "Garden can't be read" });
+        return;
     }
 
-    const user = await User.findOne({ token })
+    const user = await User.findOne({ token });
     // Error 404 : Not found
-    if (!isFound('User', user, res)) return
+    if (!isFound('User', user, res)) return;
 
-    if (user.gardens.some(e => String(e) === id)) {
-        await User.updateOne({ token }, { $pullAll: { gardens: [id] } })
-        res.json({ result: true, message: `Garden ${id} removed` })
-        return
+    if (user.gardens.some(e => String(e) === gardenId)) {
+        // Retirer le jardin de la liste des jardins de l'utilisateur
+        await User.updateOne({ token }, { $pullAll: { gardens: [gardenId] } });
+
+        // Retirer les événements associés au jardin de la liste des événements de l'utilisateur
+        const events = await Event.find({ garden: gardenId });
+        for (const event of events) {
+            await User.updateOne({ token }, { $pull: { createdEvents: event._id, subscribedEvents: event._id } });
+        }
+
+        res.json({ result: true, message: `Garden ${gardenId} and associated events removed` });
     } else {
-        await User.updateOne({ token }, { $push: { gardens: id } })
-        res.json({ result: true, message: `Garden ${id} added` })
-        return
+        // Ajouter le jardin à la liste des jardins de l'utilisateur
+        await User.updateOne({ token }, { $push: { gardens: gardenId } });
+        res.json({ result: true, message: `Garden ${gardenId} added` });
     }
 });
 
 // * Update User Events
 router.put('/events/:eventId', async (req, res) => {
-    const { id } = req.params
-    const { token } = req.headers
+    const { eventId } = req.params;
+    const { token } = req.headers;
 
     // Error 400 : Missing or empty field(s)
-    if (!checkReq([id, token], res)) return
+    if (!checkReq([eventId, token], res)) return;
 
+    if (!isFound('Event', eventId, res)) return;
+
+    let event;
     try {
-        await Event.findById(id)
+        event = await Event.findById(eventId);
     } catch (error) {
         // Error 400 : Event can't be read
-        res.status(400)
-        res.json({ result: false, error })
-        return
+        res.status(400).json({ result: false, error: "Event can't be read" });
+        return;
     }
 
-    const user = await User.findOne({ token })
+    const user = await User.findOne({ token });
     // Error 404 : Not found
-    if (!isFound('User', user, res)) return
+    if (!isFound('User', user, res)) return;
 
-    if (user.events.some(e => String(e) === id)) {
-        await User.updateOne({ token }, { $pullAll: { events: [id] } })
-        res.json({ result: true, message: `Event ${id} removed` })
-        return
+    // Vérifier si l'utilisateur est le créateur de l'événement
+    const isCreator = String(event.creator) === String(user._id);
+
+    if (user.subscribedEvents.some(e => String(e) === eventId)) {
+        await User.updateOne({ token }, { $pull: { subscribedEvents: eventId } });
+        if (isCreator) {
+            await User.updateOne({ token }, { $pull: { createdEvents: eventId } });
+            await Event.findByIdAndDelete(eventId);
+            res.json({ result: true, message: `Event ${eventId} removed from subscribedEvents and createdEvents` });
+            return
+        }
+        res.json({ result: true, message: `Event ${eventId} removed from subscribedEvents` });
     } else {
-        await User.updateOne({ token }, { $push: { events: id } })
-        res.json({ result: true, message: `Event ${id} added` })
-        return
+        await User.updateOne({ token }, { $push: { subscribedEvents: eventId } });
+        res.json({ result: true, message: `Event ${eventId} added to subscribedEvents` });
     }
 });
+
 
 
 // * Register user to event
@@ -509,6 +534,37 @@ router.delete('/:userId/events/:eventId/unregister', async (req, res) => {
         await user.save();
 
         res.status(200).json({ result: true, message: 'User unregistered from event' });
+    } catch (error) {
+        res.status(500).json({ result: false, error: error.message });
+    }
+});
+
+// Join Event
+router.put('/event/:eventId/join', async (req, res) => {
+    const { eventId } = req.params;
+    const { token } = req.headers;
+
+    // Error 400 : Missing or empty field(s)
+    if (!checkReq([eventId, token], res)) return;
+
+    try {
+        const user = await User.findOne({ token });
+        // Error 404 : Not found
+        if (!isFound('User', user, res)) return;
+
+        const event = await Event.findById(eventId);
+        // Error 404 : Not found
+        if (!isFound('Event', event, res)) return;
+
+        // Error 400 : User already in event
+        if (event.subscribers.includes(user._id)) {
+            return res.status(400).json({ result: false, error: 'User already in event' });
+        }
+
+        await Event.updateOne({ _id: event._id }, { $push: { subscribers: user._id } });
+        await User.updateOne({ _id: user._id }, { $push: { subscribedEvents: event._id } });
+
+        res.status(200).json({ result: true, message: 'User joined event' });
     } catch (error) {
         res.status(500).json({ result: false, error: error.message });
     }

@@ -506,11 +506,23 @@ router.delete('/:gardenId', async (req, res) => {
         await User.findOneAndUpdate({ _id: member._id }, { $pullAll: { gardens: [garden._id] } });
     }
 
+    // Suppression des événements associés au jardin
+    const events = await Event.find({ garden: gardenId });
+    for (const event of events) {
+        // Supprimer l'événement de la liste des événements créés et abonnés des utilisateurs
+        await User.updateMany(
+            { $or: [{ createdEvents: event._id }, { subscribedEvents: event._id }] },
+            { $pull: { createdEvents: event._id, subscribedEvents: event._id } }
+        );
+        // Supprimer l'événement lui-même
+        await Event.deleteOne({ _id: event._id });
+    }
+
     // Delete garden
     try {
         await Garden.deleteOne({ _id: garden._id });
         res.status(200);
-        res.json({ result: true, message: 'Garden deleted' });
+        res.json({ result: true, message: 'Garden and associated events deleted' });
     } catch (error) {
         res.status(400);
         res.json({ result: false, error });
@@ -550,9 +562,9 @@ router.delete('/:gardenId/member', async (req, res) => {
 });
 
 
-/* 
-// * Update Garden Member
-router.put('/:gardenId/member', async (req, res) => {
+
+// * Update Garden's Members
+router.put('/:gardenId/member/', async (req, res) => {
     const { gardenId } = req.params;
     const { token } = req.headers;
 
@@ -579,6 +591,6 @@ router.put('/:gardenId/member', async (req, res) => {
 
     res.status(200);
     res.json({ result: true, message: 'Member deleted' });
-}); */
+});
 
 module.exports = router

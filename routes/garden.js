@@ -1,4 +1,5 @@
 const express = require('express')
+const mongoose = require('mongoose')
 const User = require('../models/users')
 const Garden = require('../models/gardens')
 const router = express.Router()
@@ -322,17 +323,20 @@ router.post('/:gardenId/event/', async (req, res) => {
     if(!userCredential('members', user, garden, res)) return
 
     const newEvent = {
+        _id: new mongoose.Types.ObjectId(),
         owner: user._id,
         title,
         text,
         pictures,
-        date: new Date(),
+        date: Date(date),
     }
 
-    garden = garden.events.push(newEvent)
+    garden.events.push(newEvent)
 
     try {
         await garden.save()
+        user.events.push(newEvent._id)
+        await user.save()
         res.status(201)
         res.json({ result: true, message: 'Event created'})
     } catch (error) {

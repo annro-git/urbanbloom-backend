@@ -570,5 +570,44 @@ router.put('/event/:eventId/join', async (req, res) => {
     }
 });
 
+//Get weather
+
+router.get('/weather/:cityName', async (req, res) => {
+    const { cityName } = req.params;
+    const OWM_API_KEY = 'fb76a41322b451105145f0a5ed418942';
+
+    try {
+        fetch(`https://api.openweathermap.org/data/2.5/weather?q=${cityName}&appid=${OWM_API_KEY}&units=metric`)
+            .then(response => response.json())
+            .then(data => {
+                res.json({ result: true, data })
+            })
+    }
+    catch (error) {
+        res.status(500).json({ result: false, error: error.message });
+    }
+});
+
+//Get user infos
+
+router.get('/infos', async (req, res) => {
+    const { token } = req.headers;
+
+    // Error 400 : Missing or empty field(s)
+    if (!checkReq([token], res)) return;
+
+    try {
+        const user = await User.findOne ({ token });
+        if (!user) {
+            return res.status(404).json({ result: false, error: 'User not found' });
+        }
+
+        res.status(200).json({ result: true, user });
+
+    } catch (error) {
+        res.status(500).json({ result: false, error: error.message });
+    }
+})
+
 
 module.exports = router

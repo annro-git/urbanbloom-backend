@@ -33,7 +33,7 @@ const UserSchema = mongoose.Schema({
             validator: (value) => /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/.test(value),
             message: 'Invalid profile picture uri'
         },
-        default: 'https://upload.wikimedia.org/wikipedia/commons/5/50/User_icon-cp.svg' // TODO : replace placeholder
+        default: 'https://avatar.iran.liara.run/public/boy?username=Ash'
     },
     gardens: {
         type: Array,

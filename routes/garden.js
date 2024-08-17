@@ -391,10 +391,14 @@ router.put('/:gardenId/event/:eventId', async (req, res) => {
     let user = await User.findOne({ token })
     // Error 404 : Not found
     if(!isFound('User', user, res)) return
+    // Error 404 : Not allowed
+    if(!userCredential('members', user, garden, res)) return
 
     let target = await User.findOne({ username })
     // Error 404 : Not found
     if(!isFound('User', target, res)) return
+    // Error 404 : Not allowed
+    if(!userCredential('members', target, garden, res)) return
 
     const save = async (message, add) => {
         try {

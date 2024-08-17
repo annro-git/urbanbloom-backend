@@ -442,6 +442,57 @@ router.put('/:gardenId/event/:eventId', async (req, res) => {
     res.json(await save(`${target.username} has joined`))
 })
 
+// * Delete Garden Event
+router.delete('/:gardenId/event/:eventId', async (req, res) => {
+    const { gardenId, eventId } = req.params
+    const { token } = req.body
+    // Error 400 : Missing or empty field(s)
+    if(!checkReq([gardenId, eventId, token], res)) return
+
+    let garden = await Garden.findById(gardenId)
+    // Error 404 : Not found
+    if(!isFound('Garden', garden, res)) return
+
+    const event = garden.events.find(event => String(event._id) === eventId)
+    // Error 404 : Not found
+    if(!event){
+        res.status(404)
+        res.json({ result: false, error: 'Event not found' })
+        return
+    }
+
+    let user = await User.findOne({ token })
+    // Error 404 : Not found
+    if(!isFound('User', user, res)) return
+
+    if(String(event.owner._id) !== String(user._id)){
+        // Error 403 : Not allowed
+        if(!userCredential('owners', user, garden, res)) return
+    }
+
+    const removeFromUserEvents = async () => {
+        garden.populate('events.subscribers')
+        const { subscribers } = event
+        subscribers.forEach(async (subscriber) => {
+            let currentSubscriber = await User.findById(subscriber)
+            currentSubscriber.events = currentSubscriber.events.filter(event => String(event) !== eventId)
+            await currentSubscriber.save()
+        })
+        return
+    }
+
+    garden.events = garden.events.filter(e => String(e._id) !== String(eventId))
+
+    try {
+        await garden.save()
+        await removeFromUserEvents()
+        res.json({ result: true, message: 'Event deleted' })
+    } catch (error) {
+        res.json({ result: false, error: String(error) })
+    }
+
+})
+
 // * Update Garden Owner
 router.put('/:gardenId/owner', async (req, res) => {
     const { gardenId } = req.params

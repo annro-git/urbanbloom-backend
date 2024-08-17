@@ -38,4 +38,4 @@ const userCredential = (group, user, garden, res) => {
     return true
 }
 
-module.exports = { checkReq, isFound, isMember, userCredential }
+module.exports = { checkReq, isFound, userCredential }

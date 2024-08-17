@@ -1,4 +1,5 @@
 const express = require('express')
+const mongoose = require('mongoose')
 const User = require('../models/users')
 const Garden = require('../models/gardens')
 const router = express.Router()
@@ -322,17 +323,21 @@ router.post('/:gardenId/event/', async (req, res) => {
     if(!userCredential('members', user, garden, res)) return
 
     const newEvent = {
+        _id: new mongoose.Types.ObjectId(),
         owner: user._id,
         title,
         text,
         pictures,
-        date: new Date(),
+        date: Date(date),
+        subscribers: [user._id],
     }
 
-    garden = garden.events.push(newEvent)
+    garden.events.push(newEvent)
 
     try {
         await garden.save()
+        user.events.push(newEvent._id)
+        await user.save()
         res.status(201)
         res.json({ result: true, message: 'Event created'})
     } catch (error) {
@@ -346,7 +351,7 @@ router.post('/:gardenId/event/', async (req, res) => {
 // * Get Garden Events
 router.get('/:gardenId/events', async (req, res) => {
     const { gardenId } = req.params
-    const { token } = req.body
+    const { token } = req.headers
     // Error 400 : Missing or empty field(s)
     if(!checkReq([gardenId, token], res)) return
 
@@ -361,6 +366,134 @@ router.get('/:gardenId/events', async (req, res) => {
     if(!userCredential('members', user, garden, res)) return
 
     res.json({ result: true, events: garden.events })
+
+})
+
+// * Update Garden Event Subscriber
+router.put('/:gardenId/event/:eventId', async (req, res) => {
+    const { gardenId, eventId } = req.params
+    const { token, username } = req.body
+    // Error 400 : Missing or empty field(s)
+    if(!checkReq([gardenId, eventId, token, username], res)) return
+
+    const garden = await Garden.findById(gardenId)
+    // Error 404 : Not found
+    if(!isFound('Garden', garden, res)) return
+
+    const event = garden.events.find(event => String(event._id) === eventId)
+    // Error 404 : Not found
+    if(!event){
+        res.status(404)
+        res.json({ result: false, error: 'Event not found' })
+        return
+    }
+
+    let user = await User.findOne({ token })
+    // Error 404 : Not found
+    if(!isFound('User', user, res)) return
+    // Error 404 : Not allowed
+    if(!userCredential('members', user, garden, res)) return
+
+    let target = await User.findOne({ username })
+    // Error 404 : Not found
+    if(!isFound('User', target, res)) return
+    // Error 404 : Not allowed
+    if(!userCredential('members', target, garden, res)) return
+
+    const save = async (message, add) => {
+        try {
+            await garden.save()
+            if(!add){
+                target.events = target.events.filter(e => String(e) !== String(event._id))
+            } else {
+                target.events.push(event)
+            }
+            await target.save()
+            return { result: true, message }
+        } catch (error) {
+            return { result: false, error }
+        }
+    }
+    if(JSON.stringify(user) !== JSON.stringify(target)){
+        if(userCredential('owners', user, garden, res) || String(event.owner._id) === String(user._id)){
+            // user is garden owner or event owner
+            if(event.subscribers.find(subscriber => String(subscriber._id) === String(target._id))){
+                // owners only allowed to remove
+                event.subscribers = event.subscribers.filter(subscriber => String(subscriber._id) !== String(target._id))
+                res.json(await save(`${target.username} removed`))
+                return
+            }
+            res.status(404)
+            res.json({ result: false, error: 'Subscriber not found' })
+            return
+        } else {
+            res.status(400)
+            res.json({ result: false, error: 'Must be garden or event owner'})
+            return
+        }
+    }
+    if(String(event.owner._id) === String(user._id)){
+        res.status(400)
+        res.json({ result: false, error: 'Owner can\'t leave his own event '})
+        return
+    }
+    if(event.subscribers.find(subscriber => String(subscriber._id) === String(user._id))){
+        event.subscribers = event.subscribers.filter(subscriber => String(subscriber._id) !== String(user._id))
+        res.json(await save(`${user.username} has left`))
+        return
+    }
+    event.subscribers.push(user._id)
+    res.json(await save(`${target.username} has joined`))
+})
+
+// * Delete Garden Event
+router.delete('/:gardenId/event/:eventId', async (req, res) => {
+    const { gardenId, eventId } = req.params
+    const { token } = req.body
+    // Error 400 : Missing or empty field(s)
+    if(!checkReq([gardenId, eventId, token], res)) return
+
+    let garden = await Garden.findById(gardenId)
+    // Error 404 : Not found
+    if(!isFound('Garden', garden, res)) return
+
+    const event = garden.events.find(event => String(event._id) === eventId)
+    // Error 404 : Not found
+    if(!event){
+        res.status(404)
+        res.json({ result: false, error: 'Event not found' })
+        return
+    }
+
+    let user = await User.findOne({ token })
+    // Error 404 : Not found
+    if(!isFound('User', user, res)) return
+
+    if(String(event.owner._id) !== String(user._id)){
+        // Error 403 : Not allowed
+        if(!userCredential('owners', user, garden, res)) return
+    }
+
+    const removeFromUserEvents = async () => {
+        garden.populate('events.subscribers')
+        const { subscribers } = event
+        subscribers.forEach(async (subscriber) => {
+            let currentSubscriber = await User.findById(subscriber)
+            currentSubscriber.events = currentSubscriber.events.filter(event => String(event) !== eventId)
+            await currentSubscriber.save()
+        })
+        return
+    }
+
+    garden.events = garden.events.filter(e => String(e._id) !== String(eventId))
+
+    try {
+        await garden.save()
+        await removeFromUserEvents()
+        res.json({ result: true, message: 'Event deleted' })
+    } catch (error) {
+        res.json({ result: false, error: String(error) })
+    }
 
 })
 
@@ -395,7 +528,7 @@ router.put('/:gardenId/owner', async (req, res) => {
             return { result: false, error }
         }
     }
-    if(owner !== user){
+    if(JSON.stringify(owner) !== JSON.stringify(user)){
         if(!garden.owners.find(owner => String(owner) === String(user._id))){
             // user is not Owner
             garden.owners.push(user)
@@ -442,7 +575,7 @@ router.put('/:gardenId/member', async (req,res) => {
         try {
             await garden.save()
             if(!add){
-                target.gardens = target.gardens.filter(garden => String(garden) !== String(garden._id))
+                target.gardens = target.gardens.filter(e => String(e) !== String(garden._id))
             } else {
                 target.gardens.push(garden)
             }
@@ -453,7 +586,7 @@ router.put('/:gardenId/member', async (req,res) => {
         }
     }
 
-    if(user !== target){
+    if(JSON.stringify(user) !== JSON.stringify(target)){
         // Error 403 : user must be owner to act
         if(!userCredential('owners', user, garden, res)) return
         // Error 403 : owner only allowed to remove

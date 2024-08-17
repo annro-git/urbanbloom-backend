@@ -154,7 +154,7 @@ router.delete('/', async (req, res) => {
 
 // * Get User Gardens
 router.get('/gardens', async (req, res) => {
-    const { token } = req.query
+    const { token } = req.headers
 
     // Error 400 : Missing or empty field(s)
     if(!checkReq([token], res)) return

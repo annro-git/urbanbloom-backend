@@ -8,6 +8,7 @@ const logger = require('morgan')
 const indexRouter = require('./routes/index')
 const usersRouter = require('./routes/user')
 const gardensRouter = require('./routes/garden')
+const pagesRouter = require('./routes/page')
 const cors = require('cors')
 const app = express()
 
@@ -19,6 +20,7 @@ app.use(cookieParser())
 app.use(express.static(path.join(__dirname, 'public')))
 app.use('/', indexRouter)
 app.use('/user/', usersRouter)
-app.use('/garden', gardensRouter)
+app.use('/garden/', gardensRouter)
+app.use('/page/', pagesRouter)
 
 module.exports = app

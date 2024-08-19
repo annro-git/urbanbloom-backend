@@ -89,46 +89,45 @@ router.get('/token', async (req, res) => {
     const { email, password } = req.headers;
 
     // Error 400 : Missing or empty field(s)
-    if (!checkReq([email, password], res)) return;
+    if (!checkReq([email, password], res)) return
 
     try {
         const user = await User.findOne({ email });
 
-        // Error 404 : Not found
-        if (!isFound('User', user, res)) return;
+    // Error 404 : Not found
+    if (!isFound('User', user, res)) return
 
-        // Error 403 : Incorrect password
-        if (!bcrypt.compareSync(password, user.password)) {
-            return res.status(403).json({ result: false, error: 'Incorrect password' });
-        }
-
-        res.json({ result: true, token: user.token });
-    } catch (error) {
-        // Error 500 : Internal Server Error
-        res.status(500).json({ result: false, error: 'Internal Server Error' });
+    // Error 403 : Mismatching email / password pair
+    if (!bcrypt.compareSync(password, user.password)) {
+        res.status(403)
+        res.json({ result: false, error: 'Mismatching email / password pair' })
+        return
     }
-}); */
-/* 
+
+    res.json({ result: true, token: user.token })
+
+})
+
 // * Delete User
 router.delete('/', async (req, res) => {
     const { token } = req.body
 
     // Error 400 : Missing or empty field(s)
-    if(!checkReq([token], res)) return
+    if (!checkReq([token], res)) return
 
     const user = await User.findOne({ token })
     // Error 404 : Not found
-    if(!isFound('User', user, res)) return
+    if (!isFound('User', user, res)) return
 
     const { gardens } = user
-    if(gardens.length > 0){
+    if (gardens.length > 0) {
         await user.populate('gardens')
         gardens.map(async (garden) => {
-            const owner = garden.owner.find(e => String(e) === String(user._id))
-            if(owner && garden.owner.length === 1){
+            const owner = garden.owners.find(e => String(e) === String(user._id))
+            if (owner && garden.owners.length === 1) {
                 // delete garden if last owner
                 try {
-                    await Garden.findOneAndDelete({ _id: garden})
+                    await Garden.findOneAndDelete({ _id: garden })
                 } catch (error) {
                     res.status(400)
                     res.json({ result: false, error })
@@ -147,21 +146,21 @@ router.delete('/', async (req, res) => {
             garden.posts = garden.posts.filter(post => String(post.owner) !== String(user._id))
 
             garden.events.map(event => {
-                return({
+                return ({
                     // delete user subscriptions
-                    subscribers: event.subscribers.filter(subscriber => String(subscriber) !== String(user._id)) 
+                    subscribers: event.subscribers.filter(subscriber => String(subscriber) !== String(user._id))
                 })
             })
             // delete user events
             garden.events = garden.events.filter(event => String(event.owner) !== String(user._id))
 
-            if(garden.members.length > 1) {
+            if (garden.members.length > 1) {
                 // update garden members
                 garden.members = garden.members.filter(member => String(member) !== String(user._id))
             }
-            if(owner) {
-                // update garden owner
-                garden.owner = garden.owner.filter(e => String(e) !== String(user._id))
+            if (owner) {
+                // update garden owners
+                garden.owners = garden.owners.filter(e => String(e) !== String(user._id))
             }
             try {
                 await garden.save()
@@ -176,11 +175,11 @@ router.delete('/', async (req, res) => {
     try {
         await User.deleteOne({ token })
         res.json({ result: true, message: 'User and related datas deleted' })
-        return   
+        return
     } catch (error) {
         // Error 400 : User can't be deleted
         res.status(400)
-        res.json({ result: false, error})
+        res.json({ result: false, error })
         return
     }
 
@@ -342,272 +341,66 @@ router.get('/gardens', async (req, res) => {
     // Error 404 : Not found
     if (!isFound('User', user, res)) return
 
-    const populatedUser = await user.populate('gardens')
-    const gardens = populatedUser.gardens
-
-    res.json({ result: true, gardens })
+    res.json({ result: true, gardens: user.gardens })
 
 });
 
 
-// * Get User events
-router.get('/:userId/events', async (req, res) => {
-    const { userId } = req.params;
+// * Update User Gardens
+router.put('/garden/:id', async (req, res) => {
+    const { id } = req.params
+    const { token } = req.body
+
+    // Error 400 : Missing or empty field(s)
+    if (!checkReq([id, token], res)) return
+
+    try {
+        await Garden.findById(id)
+    } catch (error) {
+        // Error 400 : Garden can't be read
+        res.status(400)
+        res.json({ result: false, error })
+        return
+    }
+
+    const user = await User.findOne({ token });
+    // Error 404 : Not found
+    if (!isFound('User', user, res)) return
+
+    if (user.gardens.some(e => String(e) === id)) {
+        await User.updateOne({ token }, { $pullAll: { gardens: [id] } })
+        res.json({ result: true, message: `Garden ${id} removed` })
+        return
+    } else {
+        await User.updateOne({ token }, { $push: { gardens: id } })
+        res.json({ result: true, message: `Garden ${id} added` })
+        return
+    }
+});
+
+// * Get User Events
+router.get('/events', async (req, res) => {
+
     const { token } = req.headers;
 
     // Error 400 : Missing or empty field(s)
     if (!checkReq([token], res)) return
 
-    // Vérifier que l'ID utilisateur est un ID MongoDB valide
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-        return res.status(400).json({ result: false, error: 'Invalid user ID' });
-    }
 
     try {
-        const user = await User.findById(userId)
+        const user = await User.findById(token)
         if (!user) {
             return res.status(404).json({ result: false, error: 'User not found' });
         }
 
-        await user.populate('createdEvents subscribedEvents');
-        const events = {
-            createdEvents: user.createdEvents,
-            subscribedEvents: user.subscribedEvents
-        };
+        await user.populate('events');
+
+        const events = user.events;
 
         res.status(200).json({ result: true, events });
     } catch (error) {
         res.status(500).json({ result: false, error: error.message });
     }
 });
-
-
-// * Update User's Gardens
-router.put('/garden/:gardenId', async (req, res) => {
-    const { gardenId } = req.params;
-    const { token } = req.headers;
-
-    // Error 400 : Missing or empty field(s)
-    if (!checkReq([gardenId, token], res)) return;
-
-    let garden;
-    try {
-        garden = await Garden.findById(gardenId);
-    } catch (error) {
-        // Error 400 : Garden can't be read
-        res.status(400).json({ result: false, error: "Garden can't be read" });
-        return;
-    }
-
-    const user = await User.findOne({ token });
-    // Error 404 : Not found
-    if (!isFound('User', user, res)) return;
-
-    if (user.gardens.some(e => String(e) === gardenId)) {
-        // Retirer le jardin de la liste des jardins de l'utilisateur
-        await User.updateOne({ token }, { $pullAll: { gardens: [gardenId] } });
-
-        // Retirer les événements associés au jardin de la liste des événements de l'utilisateur
-        const events = await Event.find({ garden: gardenId });
-        for (const event of events) {
-            await User.updateOne({ token }, { $pull: { createdEvents: event._id, subscribedEvents: event._id } });
-        }
-
-        res.json({ result: true, message: `Garden ${gardenId} and associated events removed` });
-    } else {
-        // Ajouter le jardin à la liste des jardins de l'utilisateur
-        await User.updateOne({ token }, { $push: { gardens: gardenId } });
-        res.json({ result: true, message: `Garden ${gardenId} added` });
-    }
-});
-
-// * Update User Events
-router.put('/events/:eventId', async (req, res) => {
-    const { eventId } = req.params;
-    const { token } = req.headers;
-
-    // Error 400 : Missing or empty field(s)
-    if (!checkReq([eventId, token], res)) return;
-
-    if (!isFound('Event', eventId, res)) return;
-
-    let event;
-    try {
-        event = await Event.findById(eventId);
-    } catch (error) {
-        // Error 400 : Event can't be read
-        res.status(400).json({ result: false, error: "Event can't be read" });
-        return;
-    }
-
-    const user = await User.findOne({ token });
-    // Error 404 : Not found
-    if (!isFound('User', user, res)) return;
-
-    // Vérifier si l'utilisateur est le créateur de l'événement
-    const isCreator = String(event.creator) === String(user._id);
-
-    if (user.subscribedEvents.some(e => String(e) === eventId)) {
-        await User.updateOne({ token }, { $pull: { subscribedEvents: eventId } });
-        if (isCreator) {
-            await User.updateOne({ token }, { $pull: { createdEvents: eventId } });
-            await Event.findByIdAndDelete(eventId);
-            res.json({ result: true, message: `Event ${eventId} removed from subscribedEvents and createdEvents` });
-            return
-        }
-        res.json({ result: true, message: `Event ${eventId} removed from subscribedEvents` });
-    } else {
-        await User.updateOne({ token }, { $push: { subscribedEvents: eventId } });
-        res.json({ result: true, message: `Event ${eventId} added to subscribedEvents` });
-    }
-});
-
-
-
-// * Register user to event
-router.post('/:userId/events/:eventId/register', async (req, res) => {
-    const { token } = req.headers;
-    const { eventId, userId } = req.params;
-
-    if (!checkReq([token, userId], res)) return
-
-    // Vérifier que l'ID utilisateur est un ID MongoDB valide
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-        return res.status(400).json({ result: false, error: 'Invalid user ID' });
-    }
-
-    try {
-        const event = await Event.findById(eventId);
-        if (!event) {
-            return res.status(404).json({ result: false, error: 'Event not found' });
-        }
-
-        const user = await User.findById(userId);
-        if (!user) {
-            return res.status(404).json({ result: false, error: 'User not found' });
-        }
-
-        // Ajouter l'utilisateur à l'événement
-        event.subscribers.push(user._id);
-        await event.save();
-
-        // Ajouter l'événement à l'utilisateur
-        user.subscribedEvents.push(event._id);
-        await user.save();
-
-        res.status(200).json({ result: true, message: 'User registered to event' });
-    } catch (error) {
-        res.status(500).json({ result: false, error: error.message });
-    }
-});
-
-// * Unregister user from event
-router.delete('/:userId/events/:eventId/unregister', async (req, res) => {
-    const { token } = req.headers;
-    const { eventId, userId } = req.params;
-
-
-    if (!checkReq([token, userId], res)) return
-
-    // Vérifier que l'ID utilisateur est un ID MongoDB valide
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-        return res.status(400).json({ result: false, error: 'Invalid user ID' });
-    }
-
-    try {
-        const event = await Event.findById(eventId);
-        if (!event) {
-            return res.status(404).json({ result: false, error: 'Event not found' });
-        }
-
-        const user = await User.findById(userId);
-        if (!user) {
-            return res.status(404).json({ result: false, error: 'User not found' });
-        }
-
-        // Retirer l'utilisateur de l'événement
-        event.subscribers = event.subscribers.filter(subscriber => String(subscriber) !== userId);
-        await event.save();
-
-        // Retirer l'événement de l'utilisateur
-        user.events = user.subscribedEvents.filter(event => String(event) !== eventId);
-        await user.save();
-
-        res.status(200).json({ result: true, message: 'User unregistered from event' });
-    } catch (error) {
-        res.status(500).json({ result: false, error: error.message });
-    }
-});
-
-// Join Event
-router.put('/event/:eventId/join', async (req, res) => {
-    const { eventId } = req.params;
-    const { token } = req.headers;
-
-    // Error 400 : Missing or empty field(s)
-    if (!checkReq([eventId, token], res)) return;
-
-    try {
-        const user = await User.findOne({ token });
-        // Error 404 : Not found
-        if (!isFound('User', user, res)) return;
-
-        const event = await Event.findById(eventId);
-        // Error 404 : Not found
-        if (!isFound('Event', event, res)) return;
-
-        // Error 400 : User already in event
-        if (event.subscribers.includes(user._id)) {
-            return res.status(400).json({ result: false, error: 'User already in event' });
-        }
-
-        await Event.updateOne({ _id: event._id }, { $push: { subscribers: user._id } });
-        await User.updateOne({ _id: user._id }, { $push: { subscribedEvents: event._id } });
-
-        res.status(200).json({ result: true, message: 'User joined event' });
-    } catch (error) {
-        res.status(500).json({ result: false, error: error.message });
-    }
-});
-
-//Get weather
-
-router.get('/weather/:cityName', async (req, res) => {
-    const { cityName } = req.params;
-    const OWM_API_KEY = 'fb76a41322b451105145f0a5ed418942';
-
-    try {
-        fetch(`https://api.openweathermap.org/data/2.5/weather?q=${cityName}&appid=${OWM_API_KEY}&units=metric`)
-            .then(response => response.json())
-            .then(data => {
-                res.json({ result: true, data })
-            })
-    }
-    catch (error) {
-        res.status(500).json({ result: false, error: error.message });
-    }
-});
-
-//Get user infos
-
-router.get('/infos', async (req, res) => {
-    const { token } = req.headers;
-
-    // Error 400 : Missing or empty field(s)
-    if (!checkReq([token], res)) return;
-
-    try {
-        const user = await User.findOne ({ token });
-        if (!user) {
-            return res.status(404).json({ result: false, error: 'User not found' });
-        }
-
-        res.status(200).json({ result: true, user });
-
-    } catch (error) {
-        res.status(500).json({ result: false, error: error.message });
-    }
-})
-
 
 module.exports = router

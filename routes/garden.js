@@ -428,13 +428,13 @@ router.put('/:gardenId/event/:eventId', async (req, res) => {
             return
         } else {
             res.status(400)
-            res.json({ result: false, error: 'Must be garden or event owner'})
+            res.json({ result: false, error: 'Must be garden or event owner' })
             return
         }
     }
     if(String(event.owner._id) === String(user._id)){
         res.status(400)
-        res.json({ result: false, error: 'Owner can\'t leave his own event '})
+        res.json({ result: false, error: 'Owner can\'t leave his own event ' })
         return
     }
     if(event.subscribers.find(subscriber => String(subscriber._id) === String(user._id))){
@@ -443,7 +443,7 @@ router.put('/:gardenId/event/:eventId', async (req, res) => {
         return
     }
     event.subscribers.push(user._id)
-    res.json(await save(`${target.username} has joined`))
+    res.json(await save(`${target.username} has joined`, add))
 })
 
 // * Delete Garden Event

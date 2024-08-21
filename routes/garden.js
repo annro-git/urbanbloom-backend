@@ -655,7 +655,7 @@ router.put('/:gardenId/member', async (req,res) => {
         if(garden.members.some(member => String(member) === String(target._id))){
             garden.members = garden.members.filter(member => String(member) !== String(target._id))
             res.status(200)
-            res.json(await save(`${target.username} removed`))
+            res.json(await save(`${target.username} removed`), false)
             return
         }
         res.status(403)
@@ -666,12 +666,12 @@ router.put('/:gardenId/member', async (req,res) => {
         if(!garden.members.some(member => String(member) === String(user._id))){
             garden.members.push(target)
             res.status(200)
-            res.json(await save(`${target.username} has joined`))
+            res.json(await save(`${target.username} has joined`), true)
             return
         }
         garden.members = garden.members.filter(member => String(member) !== String(user._id))
         res.status(200)
-        res.json(await save(`${target.username} has left`))
+        res.json(await save(`${target.username} has left`), false)
         return
     }
     res.status(403)

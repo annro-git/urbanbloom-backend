@@ -97,6 +97,25 @@ router.post('/location/', async (req, res) => {
     res.json({ result: true, gardens: filteredGardens })
 })
 
+//* Get Garden Names
+router.post('/name/', async (req, res) => {
+    const { token } = req.headers
+    let { gardenIds } = req.body
+    // Error 400 : Missing or empty field(s)
+    if(!checkReq([token, gardenIds], res)) return
+
+    const gardens = await Garden.find({ '_id': { $in: gardenIds } })
+    const result = gardens.map(garden => {
+        return({
+            id: garden._id,
+            name: garden.name
+        })
+    })
+
+    res.status(200)
+    res.json({ result: true, gardens: result })
+})
+
 // * Create a Post
 router.post('/:gardenId/post/', async (req, res) => {
     const { gardenId } = req.params

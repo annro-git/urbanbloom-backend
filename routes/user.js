@@ -178,6 +178,8 @@ router.get('/gardens', async (req, res) => {
     // Error 404 : Not found
     if (!isFound('User', user, res)) return
 
+    await user.populate('gardens')
+
     res.json({ result: true, gardens: user.gardens })
 
 })
@@ -224,16 +226,20 @@ router.get('/events', async (req, res) => {
 
 
     try {
-        const user = await User.findById(token)
+        const user = await User.findOne({token})
         if (!user) {
             return res.status(404).json({ result: false, error: 'User not found' });
         }
+
+        console.log(user)
 
         await user.populate('events');
 
         const events = user.events;
 
-        res.status(200).json({ result: true, events });
+        console.log(events) 
+
+        res.status(200).json({ result: true, events: user.events });
     } catch (error) {
         res.status(500).json({ result: false, error: error.message });
     }

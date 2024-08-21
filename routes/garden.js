@@ -713,6 +713,77 @@ router.delete('/:gardenId', async (req, res) => {
         res.json({ result: false, error })
     }
 
+});
+
+
+
+
+// Ajout 21/08/24
+
+// * Get garden
+
+router.get('/:gardenId', async (req, res) => {
+    const { gardenId } = req.params
+    const { token } = req.headers
+    // Error 400 : Missing or empty field(s)
+    if(!checkReq([gardenId, token], res)) return
+
+    const garden = await Garden.findById(gardenId)
+    // Error 404 : Not found
+    if(!isFound('Garden', garden, res)) return
+
+    const user = await User.findOne({ token })
+    // Error 404 : Not found
+    if(!isFound('User', user, res)) return
+    // Error 403 : User is not a member
+    if(!userCredential('members', user, garden, res)) return
+
+    await garden.populate('members')
+    await garden.populate('owners')
+    await garden.populate('posts.owner')
+    await garden.populate('posts.replies.owner')
+    await garden.populate('posts.likes.owner')
+    await garden.populate('events.owner')
+    await garden.populate('events.subscribers')
+    res.json({ result: true, garden })
+
+});
+
+
+
+
+// * Get garden members
+
+router.get('/:gardenId/members', async (req, res) => {
+    const { gardenId } = req.params
+    const { token } = req.headers
+    // Error 400 : Missing or empty field(s)
+    if(!checkReq([gardenId, token], res)) return
+
+    const garden = await Garden.findById(gardenId)
+    // Error 404 : Not found
+    if(!isFound('Garden', garden, res)) return
+
+    const user = await User.findOne({ token })
+    // Error 404 : Not found
+    if(!isFound('User', user, res)) return
+    // Error 403 : User is not a member
+    if(!userCredential('members', user, garden, res)) return
+
+    await garden.populate('members')
+    res.json({ result: true, members: garden.members })
+
+});
+
+// * Get all gardens
+
+router.get('/', async (req, res) => {
+    const { token } = req.headers   
+    // Error 400 : Missing or empty field(s)
+    if(!checkReq([token], res)) return
+
+    const gardens = await Garden.find()
+    res.json({ result: true, gardens })
 })
 
 module.exports = router

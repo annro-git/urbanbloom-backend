@@ -14,7 +14,6 @@ const UserSchema = mongoose.Schema({
         type: String,
         required: [true, 'Missing username'],
         lowercase: true,
-        minlength: 6
     },
     password: {
         type: String,

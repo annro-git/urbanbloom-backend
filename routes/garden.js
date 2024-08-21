@@ -10,15 +10,11 @@ const bcrypt = require('bcrypt')
 const { checkReq, isFound, userCredential, isMember } = require('../helpers/errorHandlers')
 const { parseLikes } = require('../helpers/parseLikes')
 
-
-const strToArr = (str) => str.replace(/\[|\]|\'|\"/g, '').split(',').map(e => e.trim())
-
 // * Create a Garden
 router.post('/', async (req, res) => {
-    const { latitude, longitude, name, description, interests, bonus } = req.body;
-    const { token } = req.headers;
+    const { coordinates, name, description, token, interests, bonus } = req.body
     // Error 400 : Missing or empty field(s)
-    if (!checkReq([latitude, longitude, name, description, token, interests, bonus], res)) return;
+    if(!checkReq([coordinates, name, description, token, interests, bonus], res)) return
 
     const user = await User.findOne({ token });
     // Error 404 : Not found
@@ -47,11 +43,11 @@ router.post('/', async (req, res) => {
         return;
     }
 
-    const owner = user;
-    const members = [user];
-    const coordinates = { latitude, longitude };
-    const filters = { interests, bonus };
 
+    const owners = [user]
+    const members = [user]
+    const filters = { interests, bonus }
+    
     const newGarden = new Garden({
         coordinates,
         name,
@@ -67,14 +63,86 @@ router.post('/', async (req, res) => {
             res.status(400).json({ result: false, error: 'Failing to create new garden' });
             return;
         }
-        await User.updateOne({ token }, { $push: { gardens: response._id } }); // add garden to user garden list
-        res.status(201).json({ result: true, message: `Garden ${name} created and added to ${user.username} gardens` });
-
+        await User.updateOne({ token }, { $push: { gardens: response._id} }) // add garden to user garden list
+        res.status(201)
+        res.json({ result: true, message: `Garden ${name} created and added to ${user.username} gardens` })
+        
     } catch (error) {
-        res.status(400).json({ result: false, error });
+        res.status(400)
+        res.json({ result: false, error })
+        return
     }
-});
 
+})
+
+
+//* Get Garden Coordinates
+router.post('/location/', async (req, res) => {
+    const { token } = req.headers
+    const { interests, bonus } = req.body
+    // Error 400 : Missing or empty field(s)
+    if(!checkReq([token], res)) return
+
+    const user = await User.findOne({ token })
+    // Error 404 : Not found
+    if(!isFound('User', user, res)) return
+
+    const gardens = await Garden.find()
+    const filteredGardens = gardens
+        .filter(garden => {
+            if(bonus.length === 0){
+                return true
+            }
+            for(const e of bonus){
+                return garden.filters.bonus.indexOf(e) > -1
+            }
+        })
+        .filter(garden => {
+            if(interests !== ''){
+                return garden.filters.interests.indexOf(interests) > -1
+            }
+            return true        
+        })
+        .map(({ coordinates, name, description, ppURI, members, _id }) => {
+            return ({
+                id: String(_id),
+                name,
+                description,
+                latitude: coordinates.latitude,
+                longitude: coordinates.longitude,
+                ppURI, 
+                members: members.length
+            })
+        })
+
+    if(filteredGardens.length === 0){
+        res.status(404)
+        res.json({ result: false, error: 'No garden' })
+        return
+    }
+    
+    res.status(200)
+    res.json({ result: true, gardens: filteredGardens })
+})
+
+//* Get Garden Names
+router.post('/name/', async (req, res) => {
+    const { token } = req.headers
+    let { gardenIds } = req.body
+    // Error 400 : Missing or empty field(s)
+    if(!checkReq([token, gardenIds], res)) return
+
+    const gardens = await Garden.find({ '_id': { $in: gardenIds } })
+    const result = gardens.map(garden => {
+        return({
+            id: garden._id,
+            name: garden.name
+        })
+    })
+
+    res.status(200)
+    res.json({ result: true, gardens: result })
+})
 
 // * Create a Post
 router.post('/:gardenId/post', async (req, res) => {
@@ -489,13 +557,13 @@ router.put('/:gardenId/event/:eventId', async (req, res) => {
             return
         } else {
             res.status(400)
-            res.json({ result: false, error: 'Must be garden or event owner'})
+            res.json({ result: false, error: 'Must be garden or event owner' })
             return
         }
     }
     if(String(event.owner._id) === String(user._id)){
         res.status(400)
-        res.json({ result: false, error: 'Owner can\'t leave his own event '})
+        res.json({ result: false, error: 'Owner can\'t leave his own event ' })
         return
     }
     if(event.subscribers.find(subscriber => String(subscriber._id) === String(user._id))){
@@ -504,7 +572,7 @@ router.put('/:gardenId/event/:eventId', async (req, res) => {
         return
     }
     event.subscribers.push(user._id)
-    res.json(await save(`${target.username} has joined`))
+    res.json(await save(`${target.username} has joined`, true))
 })
 
 // * Delete Garden Event
@@ -666,7 +734,7 @@ router.put('/:gardenId/member', async (req,res) => {
         if(!garden.members.some(member => String(member) === String(user._id))){
             garden.members.push(target)
             res.status(200)
-            res.json(await save(`${target.username} has joined`), true)
+            res.json(await save(`${target.username} has joined`, true))
             return
         }
         garden.members = garden.members.filter(member => String(member) !== String(user._id))
@@ -767,6 +835,38 @@ router.delete('/:gardenId/member', async (req, res) => {
 
     res.status(200);
     res.json({ result: true, message: 'Member deleted' });
+
+});
+
+// Ajout 21/08/24
+
+// * Get garden
+
+router.get('/:gardenId', async (req, res) => {
+    const { gardenId } = req.params
+    const { token } = req.headers
+    // Error 400 : Missing or empty field(s)
+    if(!checkReq([gardenId, token], res)) return
+
+    const garden = await Garden.findById(gardenId)
+    // Error 404 : Not found
+    if(!isFound('Garden', garden, res)) return
+
+    const user = await User.findOne({ token })
+    // Error 404 : Not found
+    if(!isFound('User', user, res)) return
+    // Error 403 : User is not a member
+    if(!userCredential('members', user, garden, res)) return
+
+    await garden.populate('members')
+    await garden.populate('owners')
+    await garden.populate('posts.owner')
+    await garden.populate('posts.replies.owner')
+    await garden.populate('posts.likes.owner')
+    await garden.populate('events.owner')
+    await garden.populate('events.subscribers')
+    res.json({ result: true, garden })
+
 });
 
 
@@ -800,5 +900,39 @@ router.put('/:gardenId/member/', async (req, res) => {
     res.status(200);
     res.json({ result: true, message: 'Member deleted' });
 });
+
+// * Get garden members
+
+router.get('/:gardenId/members', async (req, res) => {
+    const { gardenId } = req.params
+    const { token } = req.headers
+    // Error 400 : Missing or empty field(s)
+    if(!checkReq([gardenId, token], res)) return
+
+    const garden = await Garden.findById(gardenId)
+    // Error 404 : Not found
+    if(!isFound('Garden', garden, res)) return
+
+    const user = await User.findOne({ token })
+    // Error 404 : Not found
+    if(!isFound('User', user, res)) return
+    // Error 403 : User is not a member
+    if(!userCredential('members', user, garden, res)) return
+
+    await garden.populate('members')
+    res.json({ result: true, members: garden.members })
+
+});
+
+// * Get all gardens
+
+router.get('/', async (req, res) => {
+    const { token } = req.headers   
+    // Error 400 : Missing or empty field(s)
+    if(!checkReq([token], res)) return
+
+    const gardens = await Garden.find()
+    res.json({ result: true, gardens })
+})
 
 module.exports = router

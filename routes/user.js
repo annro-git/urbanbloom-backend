@@ -55,34 +55,20 @@ router.post('/', async (req, res) => {
     }
 })
 
-/* // * Login User and get Token
-router.post('/login', async (req, res) => {
-    const { email, password } = req.body;
+//* Get User Gardens
+router.get('/gardens', async (req, res) => {
+    const { token } = req.headers
 
     // Error 400 : Missing or empty field(s)
-    if (!email || !password) {
-        return res.status(400).json({ result: false, error: 'Missing email or password' });
-    }
+    if(!checkReq([token], res)) return
 
-    try {
-        const user = await User.findOne({ email });
-        // Error 404 : User not found
-        if (!user) {
-            return res.status(404).json({ result: false, error: 'User not found' });
-        }
+    const user = await User.findOne({ token })
 
-        // Check if password is correct
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            return res.status(403).json({ result: false, error: 'Invalid credentials' });
-        }
+    // Error 404 : Not found
+    if(!isFound('User', user, res)) return
 
-        // Return the token
-        res.status(200).json({ result: true, token: user.token });
-    } catch (error) {
-        res.status(500).json({ result: false, error: 'Server error' });
-    }
-}); */
+    res.json({ result: true, gardens: user.gardens })
+})
 
 //* Get User Token
 router.get('/token', async (req, res) => {
@@ -103,7 +89,7 @@ router.get('/token', async (req, res) => {
         return
     }
 
-    res.json({ result: true, token: user.token })
+    res.json({ result: true, token: user.token, username: user.username })
 
 })
 
@@ -358,6 +344,8 @@ router.get('/gardens', async (req, res) => {
     // Error 404 : Not found
     if(!isFound('User', user, res)) return
 
+    await user.populate('gardens')
+
     res.json({ result: true, gardens: user.gardens })
 
 })
@@ -405,16 +393,20 @@ router.get('/events', async (req, res) => {
 
 
     try {
-        const user = await User.findById(token)
+        const user = await User.findOne({token})
         if (!user) {
             return res.status(404).json({ result: false, error: 'User not found' });
         }
+
+        console.log(user)
 
         await user.populate('events');
 
         const events = user.events;
 
-        res.status(200).json({ result: true, events });
+        console.log(events) 
+
+        res.status(200).json({ result: true, events: user.events });
     } catch (error) {
         res.status(500).json({ result: false, error: error.message });
     }

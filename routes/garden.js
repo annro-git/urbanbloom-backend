@@ -393,7 +393,7 @@ router.post('/:gardenId/event/', async (req, res) => {
         title,
         text,
         pictures,
-        date: Date(date),
+        date: new Date(date),
         subscribers: [user._id],
     }
 
@@ -401,7 +401,7 @@ router.post('/:gardenId/event/', async (req, res) => {
 
     try {
         await garden.save()
-        user.events.push(newEvent._id)
+        user.events.push(newEvent)
         await user.save()
         res.status(201)
         res.json({ result: true, message: 'Event created'})

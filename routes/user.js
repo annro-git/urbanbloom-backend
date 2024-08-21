@@ -4,6 +4,7 @@ const router = express.Router()
 const bcrypt = require('bcrypt')
 const User = require('../models/users')
 const Garden = require('../models/gardens')
+// const Event = require('../models/gardens.js')
 
 const { checkReq, isFound } = require('../helpers/errorHandlers.js')
 
@@ -212,6 +213,41 @@ router.put('/garden/:id', async (req, res) => {
         res.json({ result: true, message: `Garden ${ id } added`})
         return
     }
+})
+
+// * Get User Events
+router.get('/events', async (req, res) => {
+    const { token } = req.headers
+    
+    // Error 400 : Missing or empty field(s)
+    if(!checkReq([token], res)) return
+
+    const user = await User.findOne({ token })
+    // Error 404 : Not found
+    if(!isFound('User', user, res)) return
+
+    await user.populate('gardens')
+
+    let events = []
+    user.gardens.forEach(garden => {
+        garden.events.forEach(gardenEvent => {
+            user.events.forEach(userEvent => {
+                if(String(userEvent._id) === String(gardenEvent._id)){
+                    events.push({
+                        id: userEvent._id,
+                        title: gardenEvent.title,
+                        text: gardenEvent.text,
+                        date: gardenEvent.date,
+                        gardenId: garden._id,
+                        gardenName: garden.name,
+                    })
+                }
+            })
+        })
+    })
+
+    res.json({ result: true, events})
+
 })
 
 module.exports = router

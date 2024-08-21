@@ -52,6 +52,21 @@ router.post('/', async (req, res) => {
     }
 })
 
+//* Get User Gardens
+router.get('/gardens', async (req, res) => {
+    const { token } = req.headers
+
+    // Error 400 : Missing or empty field(s)
+    if(!checkReq([token], res)) return
+
+    const user = await User.findOne({ token })
+
+    // Error 404 : Not found
+    if(!isFound('User', user, res)) return
+
+    res.json({ result: true, gardens: user.gardens })
+})
+
 //* Get User Token
 router.get('/token', async (req, res) => {
     const { email, password } = req.headers
@@ -71,7 +86,7 @@ router.get('/token', async (req, res) => {
         return
     }
 
-    res.json({ result: true, token: user.token })
+    res.json({ result: true, token: user.token, username: user.username })
 
 })
 

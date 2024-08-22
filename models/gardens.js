@@ -8,8 +8,7 @@ const ReplySchema = mongoose.Schema({
     },
     createdAt: {
         type: Date,
-        default: new Date(),
-        required: true
+        default: new Date()
     },
     text: {
         type: String,
@@ -61,7 +60,7 @@ const PostSchema = mongoose.Schema({
     replies: [ReplySchema]
 })
 
-/* const EventSchema = mongoose.Schema({
+const EventSchema = mongoose.Schema({
     owner: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'users',
@@ -99,7 +98,7 @@ const PostSchema = mongoose.Schema({
             ref: 'users',
         }
     }
-}) */
+})
 
 const GardenSchema = mongoose.Schema({
     coordinates: {
@@ -135,13 +134,7 @@ const GardenSchema = mongoose.Schema({
         maxlength: 300,
     },
     posts: [PostSchema],
-    events: {
-        type: Array,
-        of: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'events'
-        }
-    },
+    events: [EventSchema],
     members: {
         type: Array,
         of: {
@@ -149,10 +142,13 @@ const GardenSchema = mongoose.Schema({
             ref: 'users'
         }
     },
-    owner: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'users',
-        required: true
+    owners: {
+        type: Array,
+        of: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'users'
+        },
+        minlength: 1
     },
     filters: {
         interests: {

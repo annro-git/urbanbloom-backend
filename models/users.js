@@ -62,6 +62,5 @@ const UserSchema = mongoose.Schema({
     firstname: String,
     lastname: String,
 })
-
 const User = mongoose.model('users', UserSchema)
 module.exports = User

@@ -5,7 +5,7 @@ const router = express.Router()
 const bcrypt = require('bcrypt')
 const User = require('../models/users')
 const Garden = require('../models/gardens')
-const Event = require('../models/events')
+// const Event = require('../models/gardens.js')
 
 const { checkReq, isFound } = require('../helpers/errorHandlers.js')
 // const { mongo } = require('mongoose')
@@ -385,31 +385,37 @@ router.put('/garden/:id', async (req, res) => {
 
 // * Get User Events
 router.get('/events', async (req, res) => {
-
-    const { token } = req.headers;
-
+    const { token } = req.headers
+    
     // Error 400 : Missing or empty field(s)
-    if (!checkReq([token], res)) return
+    if(!checkReq([token], res)) return
 
+    const user = await User.findOne({ token })
+    // Error 404 : Not found
+    if(!isFound('User', user, res)) return
 
-    try {
-        const user = await User.findOne({token})
-        if (!user) {
-            return res.status(404).json({ result: false, error: 'User not found' });
-        }
+    await user.populate('gardens')
 
-        console.log(user)
+    let events = []
+    user.gardens.forEach(garden => {
+        garden.events.forEach(gardenEvent => {
+            user.events.forEach(userEvent => {
+                if(String(userEvent._id) === String(gardenEvent._id)){
+                    events.push({
+                        id: userEvent._id,
+                        title: gardenEvent.title,
+                        text: gardenEvent.text,
+                        date: gardenEvent.date,
+                        gardenId: garden._id,
+                        gardenName: garden.name,
+                    })
+                }
+            })
+        })
+    })
 
-        await user.populate('events');
+    res.json({ result: true, events})
 
-        const events = user.events;
-
-        console.log(events) 
-
-        res.status(200).json({ result: true, events: user.events });
-    } catch (error) {
-        res.status(500).json({ result: false, error: error.message });
-    }
-});
+})
 
 module.exports = router

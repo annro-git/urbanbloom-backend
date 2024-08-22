@@ -62,7 +62,7 @@ router.get('/gardens', async (req, res) => {
     // Error 400 : Missing or empty field(s)
     if(!checkReq([token], res)) return
 
-    const user = await User.findOne({ token })
+    const user = await User.findOne({ token }).populate('gardens')
 
     // Error 404 : Not found
     if(!isFound('User', user, res)) return

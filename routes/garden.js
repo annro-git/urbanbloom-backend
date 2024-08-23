@@ -119,6 +119,7 @@ router.post('/name/', async (req, res) => {
 // * Create a Post
 router.post('/:gardenId/post/', async (req, res) => {
     const { gardenId } = req.params
+    console.log(req.body) // !
     const { token, title, text, pictures } = req.body
     // Error 400 : Missing or empty field(s)
     if(!checkReq([gardenId, token, title, text, pictures], res)) return

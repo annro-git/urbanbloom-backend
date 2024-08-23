@@ -21,6 +21,8 @@ router.get('/', (req, res) => {
 router.post('/picture', async (req, res) => {
   const { token } = req.body
   const { blob } = req.files
+
+  console.log(blob) // !
     
   // Error 400 : Missing or empty field(s)
   if(!checkReq([token, blob], res)) return
@@ -38,7 +40,7 @@ router.post('/picture', async (req, res) => {
           res.json({ result: false, error: 'Error uploading to Cloudinary'})
           return
         }
-        res.json({ result: true, url: result.secure_url})
+        res.json({ result: true, url: result.secure_url })
       }
     )
     .end(blob.data)

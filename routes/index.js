@@ -21,9 +21,6 @@ router.get('/', (req, res) => {
 router.post('/picture', async (req, res) => {
   const { token } = req.body
   const { blob } = req.files
-
-  console.log(blob) // !
-    
   // Error 400 : Missing or empty field(s)
   if(!checkReq([token, blob], res)) return
   

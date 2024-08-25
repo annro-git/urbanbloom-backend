@@ -21,7 +21,6 @@ router.get('/', async (req, res) => {
     if(!isFound('Page', page, res)) return
 
     const { type, sow, harvest, image, text } = page
-    console.log(text)
 
     const currentPage = {
         name,

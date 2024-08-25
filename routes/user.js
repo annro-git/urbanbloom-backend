@@ -414,6 +414,7 @@ router.get('/events', async (req, res) => {
         })
     })
 
+        console.log(events)
     res.json({ result: true, events})
 
 })

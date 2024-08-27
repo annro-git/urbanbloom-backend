@@ -70,6 +70,34 @@ router.get('/gardens', async (req, res) => {
     res.json({ result: true, gardens: user.gardens })
 })
 
+//* Get User Garden details
+router.get('/gardens/details', async (req, res) => {
+    const { token } = req.headers
+
+    // Error 400 : Missing or empty field(s)
+    if(!checkReq([token], res)) return
+
+    const user = await User.findOne({ token })
+
+    // Error 404 : Not found
+    if(!isFound('User', user, res)) return
+
+    await user.populate('gardens')
+
+    const filteredGardens = user.gardens.map(garden => {
+        return ({
+            id: garden._id,
+            name: garden.name,
+            description: garden.description,
+            ppURI: garden.ppURI,
+            members: garden.members.length,
+        })
+    })
+
+    res.json({ result: true, gardens: filteredGardens })
+
+})
+
 //* Get User Token
 router.get('/token', async (req, res) => {
     const { email, password } = req.headers

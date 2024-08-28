@@ -53,6 +53,27 @@ router.post('/', async (req, res) => {
     }
 })
 
+//* Get User ppURI
+router.get('/pp', async (req, res) => {
+    const { username, token } = req.headers
+
+    // Error 400 : Missing or empty field(s)
+    if(!checkReq([username, token], res)) return
+
+    const user = await User.findOne({ token })
+
+    // Error 404 : Not found
+    if(!isFound('User', user, res)) return
+
+    const owner = await User.findOne({ username })
+
+    // Error 404 : Not found
+    if(!isFound('User', owner, res)) return
+
+    res.json({ result: true, ppURI: owner.ppURI })
+
+})
+
 //* Get User Gardens
 router.get('/gardens', async (req, res) => {
     const { token } = req.headers

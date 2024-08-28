@@ -13,7 +13,6 @@ const UserSchema = mongoose.Schema({
     username: {
         type: String,
         required: [true, 'Missing username'],
-        lowercase: true,
     },
     password: {
         type: String,

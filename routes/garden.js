@@ -9,7 +9,7 @@ const { parseLikes } = require('../helpers/parseLikes')
 
 // * Create a Garden
 router.post('/', async (req, res) => {
-    console.log(req.body)
+
     const { coordinates, name, description, token, interests, bonus, ppURI } = req.body
     // Error 400 : Missing or empty field(s)
     if(!checkReq([coordinates, name, description, token, interests, bonus ], res)) return
@@ -178,28 +178,16 @@ router.get('/:gardenId/posts', async (req, res) => {
     await garden.populate('posts.owner', ['username', '-_id'])
     await garden.populate('posts.likes.owner', ['username', '-_id'])
 
-    // Parse posts likes
-    const parseLikes = (likes) => {
-        const result = {}
-        likes.forEach(like => {
-            if(!result[like.likeType]){
-                result[like.likeType] = []
-                result[like.likeType].push(like.owner.username)
-                return
-            }
-            result[like.likeType].push(like.owner.username)
-        })
-        return result
-    }
-
     const posts = garden.posts.map(post => {
         return ({
+            id: post._id,
             owner: post.owner.username,
             createdAt: post.createdAt,
             title: post.title,
             text: post.text,
             repliesCount: post.replies.length,
-            likes: parseLikes(post.likes)
+            likes: parseLikes(post.likes),
+            pictures: post.pictures,
         })
     })
 
@@ -245,7 +233,8 @@ router.get('/:gardenId/post/:postId', async (req, res) => {
                 text: reply.text,
             })
         }),
-        likes: parseLikes(post.likes)
+        likes: parseLikes(post.likes),
+        pictures: post.pictures,
     }
 
     res.json({ result: true, post })
@@ -276,7 +265,7 @@ router.post('/:gardenId/post/:postId', async (req, res) => {
     const newReply = {
         owner: user._id,
         text,
-        date: new Date(),
+        createdAt: new Date(),
     }
     try {
         post.replies.push(newReply)
@@ -367,6 +356,7 @@ router.put('/:gardenId/post/:postId/like', async (req, res) => {
     if(like.likeType === likeType){
         post.likes = post.likes.filter(like => String(like.owner) !== String(user._id))
         res.json(await save('deleted'))
+        return
     }
     like.likeType = likeType
     res.json(await save('updated'))

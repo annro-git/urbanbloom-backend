@@ -9,7 +9,7 @@ const { parseLikes } = require('../helpers/parseLikes')
 
 // * Create a Garden
 router.post('/', async (req, res) => {
-
+    console.log(req.body)
     const { coordinates, name, description, token, interests, bonus, ppURI } = req.body
     // Error 400 : Missing or empty field(s)
     if(!checkReq([coordinates, name, description, token, interests, bonus ], res)) return

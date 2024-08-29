@@ -5,6 +5,8 @@ const router = express.Router()
 const bcrypt = require('bcrypt')
 const User = require('../models/users')
 const Garden = require('../models/gardens')
+const Page = require('../models/pages')
+const Tool = require('../models/tools')
 // const Event = require('../models/gardens.js')
 
 const { checkReq, isFound } = require('../helpers/errorHandlers.js')
@@ -60,17 +62,17 @@ router.get('/pp', async (req, res) => {
     const { username, token } = req.headers
 
     // Error 400 : Missing or empty field(s)
-    if(!checkReq([username, token], res)) return
+    if (!checkReq([username, token], res)) return
 
     const user = await User.findOne({ token })
 
     // Error 404 : Not found
-    if(!isFound('User', user, res)) return
+    if (!isFound('User', user, res)) return
 
     const owner = await User.findOne({ username })
 
     // Error 404 : Not found
-    if(!isFound('User', owner, res)) return
+    if (!isFound('User', owner, res)) return
 
     res.json({ result: true, ppURI: owner.ppURI })
 
@@ -433,5 +435,57 @@ router.get('/posts', async (req, res) => {
 
     res.json({ result: true, posts })
 });
+
+
+// * Get Pages
+
+router.get('/pages', async (req, res) => {
+
+    const { token } = req.headers
+    // Error 400 : Missing or empty field(s)
+    if (!checkReq([token], res)) return
+
+    const user = await User({ token })
+    // Error 404 : Not found
+    if (!isFound('User', user, res)) return
+
+    const pages = await Page.find()
+
+    const vegetables = pages.filter(page => page.type === 'vegetable');
+    const fruits = pages.filter(page => page.type === 'fruit');
+    const flowers = pages.filter(page => page.type === 'flower');
+
+    const sortedPages = {
+        vegetables,
+        fruits,
+        flowers
+    };
+
+    res.json({ result: true, pages: sortedPages })
+
+});
+
+
+// * Get Tools
+
+router.get('/tools', async (req, res) => {
+    
+        const { token } = req.headers
+        // Error 400 : Missing or empty field(s)
+        if (!checkReq([token], res)) return
+    
+        const user = await User({ token })
+        // Error 404 : Not found
+        if (!isFound('User', user, res)) return
+    
+        const tools = await Tool.find()
+    
+        res.json({ result: true, tools })
+    
+    }
+);
+
+
+
 
 module.exports = router

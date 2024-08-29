@@ -11,5 +11,5 @@ const ToolSchema = mongoose.Schema({
     text: String,
 })
 
-const Tool = mongoose.model('pages', ToolSchema)
+const Tool = mongoose.model('tools', ToolSchema)
 module.exports = Tool

@@ -15,7 +15,7 @@ const PageSchema = mongoose.Schema({
         end: Date,
     },
     image: String,
-    test: String,
+    text: String,
 })
 
 const Page = mongoose.model('pages', PageSchema)

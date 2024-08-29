@@ -55,6 +55,27 @@ router.post('/', async (req, res) => {
     }
 })
 
+//* Get User ppURI
+router.get('/pp', async (req, res) => {
+    const { username, token } = req.headers
+
+    // Error 400 : Missing or empty field(s)
+    if(!checkReq([username, token], res)) return
+
+    const user = await User.findOne({ token })
+
+    // Error 404 : Not found
+    if(!isFound('User', user, res)) return
+
+    const owner = await User.findOne({ username })
+
+    // Error 404 : Not found
+    if(!isFound('User', owner, res)) return
+
+    res.json({ result: true, ppURI: owner.ppURI })
+
+})
+
 //* Get User Gardens
 router.get('/gardens', async (req, res) => {
     const { token } = req.headers
@@ -120,83 +141,6 @@ router.get('/token', async (req, res) => {
     res.json({ result: true, token: user.token, username: user.username })
 
 })
-
-/*// * Delete User
-router.delete('/', async (req, res) => {
-    const { token } = req.body
-
-    // Error 400 : Missing or empty field(s)
-    if (!checkReq([token], res)) return
-
-    const user = await User.findOne({ token })
-    // Error 404 : Not found
-    if (!isFound('User', user, res)) return
-
-    const { gardens } = user
-    if (gardens.length > 0) {
-        await user.populate('gardens')
-        gardens.map(async (garden) => {
-            const owner = garden.owners.find(e => String(e) === String(user._id))
-            if (owner && garden.owners.length === 1) {
-                // delete garden if last owner
-                try {
-                    await Garden.findOneAndDelete({ _id: garden })
-                } catch (error) {
-                    res.status(400)
-                    res.json({ result: false, error })
-                }
-                return
-            }
-            garden.posts.map(post => {
-                return ({
-                    // delete user replies
-                    replies: post.replies.filter(reply => String(reply.owner) !== String(user._id)),
-                    // delete user likes
-                    likes: post.likes.filter(like => String(like.owner) !== String(user._id))
-                })
-            })
-            // delete user posts
-            garden.posts = garden.posts.filter(post => String(post.owner) !== String(user._id))
-
-            garden.events.map(event => {
-                return ({
-                    // delete user subscriptions
-                    subscribers: event.subscribers.filter(subscriber => String(subscriber) !== String(user._id))
-                })
-            })
-            // delete user events
-            garden.events = garden.events.filter(event => String(event.owner) !== String(user._id))
-
-            if (garden.members.length > 1) {
-                // update garden members
-                garden.members = garden.members.filter(member => String(member) !== String(user._id))
-            }
-            if (owner) {
-                // update garden owners
-                garden.owners = garden.owners.filter(e => String(e) !== String(user._id))
-            }
-            try {
-                await garden.save()
-            } catch (error) {
-                res.status(400)
-                res.json({ result: false, error })
-                return
-            }
-        })
-    }
-
-    try {
-        await User.deleteOne({ token })
-        res.json({ result: true, message: 'User and related datas deleted' })
-        return
-    } catch (error) {
-        // Error 400 : User can't be deleted
-        res.status(400)
-        res.json({ result: false, error })
-        return
-    }
-
-}); */
 
 // Delete User
 router.delete('/', async (req, res) => {
@@ -488,6 +432,6 @@ router.get('/posts', async (req, res) => {
     await addPosts();
 
     res.json({ result: true, posts })
-})
+});
 
 module.exports = router

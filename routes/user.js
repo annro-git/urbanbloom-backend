@@ -436,6 +436,8 @@ router.get('/events', async (req, res) => {
                         date: gardenEvent.date,
                         gardenId: garden._id,
                         gardenName: garden.name,
+                        owner: gardenEvent.owner, // Ajout des propriétaires
+                        subscribers: gardenEvent.subscribers // Ajout des abonnés
                     })
                 }
             })
@@ -447,7 +449,6 @@ router.get('/events', async (req, res) => {
 });
 
 // * Get User Posts
-
 router.get('/posts', async (req, res) => {
     const { token } = req.headers
 
@@ -460,23 +461,31 @@ router.get('/posts', async (req, res) => {
 
     await user.populate('gardens')
 
-    let posts = []
-    user.gardens.forEach(garden => {
-        garden.posts.forEach(gardenPost => {
-            user.posts.forEach(userPost => {
-                if (String(userPost._id) === String(gardenPost._id)) {
+    const posts = [];
+
+    const addPosts = async () => {
+        for (const garden of user.gardens) {
+            for (const post of garden.posts) {
+                if (String(post.owner) === String(user._id)) {
+                    await post.replies.populate('owner');
+                    await post.populate('owner');
+
                     posts.push({
-                        id: userPost._id,
-                        title: gardenPost.title,
-                        text: gardenPost.text,
-                        date: gardenPost.date,
+                        id: post._id,
+                        owner: post.owner,
+                        title: post.title,
+                        content: post.content,
                         gardenId: garden._id,
                         gardenName: garden.name,
-                    })
+                        likes: post.likes,
+                        replies: post.replies
+                    });
                 }
-            })
-        })
-    })
+            }
+        }
+    };
+
+    await addPosts();
 
     res.json({ result: true, posts })
 })

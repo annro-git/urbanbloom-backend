@@ -60,12 +60,12 @@ router.get('/gardens', async (req, res) => {
     const { token } = req.headers
 
     // Error 400 : Missing or empty field(s)
-    if(!checkReq([token], res)) return
+    if (!checkReq([token], res)) return
 
     const user = await User.findOne({ token }).populate('gardens')
 
     // Error 404 : Not found
-    if(!isFound('User', user, res)) return
+    if (!isFound('User', user, res)) return
 
     res.json({ result: true, gardens: user.gardens })
 })
@@ -75,12 +75,12 @@ router.get('/gardens/details', async (req, res) => {
     const { token } = req.headers
 
     // Error 400 : Missing or empty field(s)
-    if(!checkReq([token], res)) return
+    if (!checkReq([token], res)) return
 
     const user = await User.findOne({ token })
 
     // Error 404 : Not found
-    if(!isFound('User', user, res)) return
+    if (!isFound('User', user, res)) return
 
     await user.populate('gardens')
 
@@ -103,15 +103,15 @@ router.get('/token', async (req, res) => {
     const { email, password } = req.headers
 
     // Error 400 : Missing or empty field(s)
-    if(!checkReq([email, password], res)) return
+    if (!checkReq([email, password], res)) return
 
     const user = await User.findOne({ email })
 
     // Error 404 : Not found
-    if(!isFound('User', user, res)) return
+    if (!isFound('User', user, res)) return
 
     // Error 403 : Mismatching email / password pair
-    if(!bcrypt.compareSync(password, user.password)){
+    if (!bcrypt.compareSync(password, user.password)) {
         res.status(403)
         res.json({ result: false, error: 'Mismatching email / password pair' })
         return
@@ -203,21 +203,21 @@ router.delete('/', async (req, res) => {
     const { token } = req.body
 
     // Error 400 : Missing or empty field(s)
-    if(!checkReq([token], res)) return
+    if (!checkReq([token], res)) return
 
     const user = await User.findOne({ token })
     // Error 404 : Not found
-    if(!isFound('User', user, res)) return
+    if (!isFound('User', user, res)) return
 
     const { gardens } = user
-    if(gardens.length > 0){
+    if (gardens.length > 0) {
         await user.populate('gardens')
         gardens.map(async (garden) => {
             const owner = garden.owners.find(e => String(e) === String(user._id))
-            if(owner && garden.owners.length === 1){
+            if (owner && garden.owners.length === 1) {
                 // delete garden if last owner
                 try {
-                    await Garden.findOneAndDelete({ _id: garden})
+                    await Garden.findOneAndDelete({ _id: garden })
                 } catch (error) {
                     res.status(400)
                     res.json({ result: false, error })
@@ -236,19 +236,19 @@ router.delete('/', async (req, res) => {
             garden.posts = garden.posts.filter(post => String(post.owner) !== String(user._id))
 
             garden.events.map(event => {
-                return({
+                return ({
                     // delete user subscriptions
-                    subscribers: event.subscribers.filter(subscriber => String(subscriber) !== String(user._id)) 
+                    subscribers: event.subscribers.filter(subscriber => String(subscriber) !== String(user._id))
                 })
             })
             // delete user events
             garden.events = garden.events.filter(event => String(event.owner) !== String(user._id))
 
-            if(garden.members.length > 1) {
+            if (garden.members.length > 1) {
                 // update garden members
                 garden.members = garden.members.filter(member => String(member) !== String(user._id))
             }
-            if(owner) {
+            if (owner) {
                 // update garden owners
                 garden.owners = garden.owners.filter(e => String(e) !== String(user._id))
             }
@@ -265,11 +265,11 @@ router.delete('/', async (req, res) => {
     try {
         await User.deleteOne({ token })
         res.json({ result: true, message: 'User and related datas deleted' })
-        return   
+        return
     } catch (error) {
         // Error 400 : User can't be deleted
         res.status(400)
-        res.json({ result: false, error})
+        res.json({ result: false, error })
         return
     }
 
@@ -366,11 +366,11 @@ router.get('/gardens', async (req, res) => {
     const { token } = req.headers
 
     // Error 400 : Missing or empty field(s)
-    if(!checkReq([token], res)) return
+    if (!checkReq([token], res)) return
 
     const user = await User.findOne({ token })
     // Error 404 : Not found
-    if(!isFound('User', user, res)) return
+    if (!isFound('User', user, res)) return
 
     await user.populate('gardens')
 
@@ -383,30 +383,30 @@ router.get('/gardens', async (req, res) => {
 router.put('/garden/:id', async (req, res) => {
     const { id } = req.params
     const { token } = req.body
-    
+
     // Error 400 : Missing or empty field(s)
-    if(!checkReq([id, token], res)) return
+    if (!checkReq([id, token], res)) return
 
     try {
         await Garden.findById(id)
     } catch (error) {
         // Error 400 : Garden can't be read
         res.status(400)
-        res.json({ result: false, error})
+        res.json({ result: false, error })
         return
     }
 
     const user = await User.findOne({ token })
     // Error 404 : Not found
-    if(!isFound('User', user, res)) return
+    if (!isFound('User', user, res)) return
 
-    if(user.gardens.some(e => String(e) === id)){
+    if (user.gardens.some(e => String(e) === id)) {
         await User.updateOne({ token }, { $pullAll: { gardens: [id] } })
-        res.json({ result: true, message: `Garden ${ id } removed`})
+        res.json({ result: true, message: `Garden ${id} removed` })
         return
     } else {
         await User.updateOne({ token }, { $push: { gardens: id } })
-        res.json({ result: true, message: `Garden ${ id } added`})
+        res.json({ result: true, message: `Garden ${id} added` })
         return
     }
 })
@@ -414,13 +414,13 @@ router.put('/garden/:id', async (req, res) => {
 // * Get User Events
 router.get('/events', async (req, res) => {
     const { token } = req.headers
-    
+
     // Error 400 : Missing or empty field(s)
-    if(!checkReq([token], res)) return
+    if (!checkReq([token], res)) return
 
     const user = await User.findOne({ token })
     // Error 404 : Not found
-    if(!isFound('User', user, res)) return
+    if (!isFound('User', user, res)) return
 
     await user.populate('gardens')
 
@@ -428,7 +428,7 @@ router.get('/events', async (req, res) => {
     user.gardens.forEach(garden => {
         garden.events.forEach(gardenEvent => {
             user.events.forEach(userEvent => {
-                if(String(userEvent._id) === String(gardenEvent._id)){
+                if (String(userEvent._id) === String(gardenEvent._id)) {
                     events.push({
                         id: userEvent._id,
                         title: gardenEvent.title,
@@ -442,9 +442,43 @@ router.get('/events', async (req, res) => {
         })
     })
 
-        console.log(events)
-    res.json({ result: true, events})
+    res.json({ result: true, events })
 
+});
+
+// * Get User Posts
+
+router.get('/posts', async (req, res) => {
+    const { token } = req.headers
+
+    // Error 400 : Missing or empty field(s)
+    if (!checkReq([token], res)) return
+
+    const user = await User({ token })
+    // Error 404 : Not found
+    if (!isFound('User', user, res)) return
+
+    await user.populate('gardens')
+
+    let posts = []
+    user.gardens.forEach(garden => {
+        garden.posts.forEach(gardenPost => {
+            user.posts.forEach(userPost => {
+                if (String(userPost._id) === String(gardenPost._id)) {
+                    posts.push({
+                        id: userPost._id,
+                        title: gardenPost.title,
+                        text: gardenPost.text,
+                        date: gardenPost.date,
+                        gardenId: garden._id,
+                        gardenName: garden.name,
+                    })
+                }
+            })
+        })
+    })
+
+    res.json({ result: true, posts })
 })
 
 module.exports = router

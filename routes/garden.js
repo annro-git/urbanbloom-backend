@@ -9,7 +9,7 @@ const { parseLikes } = require('../helpers/parseLikes')
 
 // * Create a Garden
 router.post('/', async (req, res) => {
-    console.log(req.body)
+    //console.log(req.body)
     const { coordinates, name, description, token, interests, bonus, ppURI } = req.body
     // Error 400 : Missing or empty field(s)
     if(!checkReq([coordinates, name, description, token, interests, bonus ], res)) return
@@ -121,7 +121,7 @@ router.post('/name/', async (req, res) => {
 // * Create a Post
 router.post('/:gardenId/post/', async (req, res) => {
     const { gardenId } = req.params
-    console.log(req.body) // !
+    //console.log(req.body) // !
     const { token, title, text, pictures } = req.body
     // Error 400 : Missing or empty field(s)
     if(!checkReq([gardenId, token, title, text, pictures], res)) return

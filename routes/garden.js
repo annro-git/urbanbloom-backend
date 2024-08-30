@@ -386,6 +386,7 @@ router.post('/:gardenId/event/', async (req, res) => {
         title,
         text,
         pictures,
+        createdAt: new Date(),
         date: new Date(date),
         subscribers: [user._id],
     }

@@ -55,6 +55,7 @@ router.post('/', async (req, res) => {
 
 //* Get User ppURI
 router.get('/pp', async (req, res) => {
+    
     const { username, token } = req.headers
 
     // Error 400 : Missing or empty field(s)

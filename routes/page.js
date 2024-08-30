@@ -21,7 +21,6 @@ router.get('/', async (req, res) => {
     if(!isFound('Page', page, res)) return
 
     const { type, sow, harvest, image, text } = page
-    console.log(text)
 
     const currentPage = {
         name,
@@ -38,8 +37,28 @@ router.get('/', async (req, res) => {
         text,
     }
 
-    res.json({ result: true, currentPage })
+    res.json({ result: true, page: currentPage })
 
+})
+
+// Get Pages
+router.get('/all/', async (req, res) => {
+    const { token } = req.headers
+
+    // Error 400 : Missing or empty field(s)
+    if(!checkReq([token], res)) return
+
+    const user = await User.findOne({ token })
+    // Error 404 : Not found
+    if(!isFound('User', user, res)) return
+
+    const pages = await Page.find({})
+
+    const filteredPages = pages.map(page => {
+        const { name, type, image } = page
+        return ({ name, type, image })
+    })
+    res.json({ result: true, pages: filteredPages })
 })
 
 // Get Pages by current month
@@ -92,10 +111,10 @@ router.get('/current/', async (req, res) => {
             return
         }
 
-        return { name: page.name, type: page.type, period: result.period }
+        return { name: page.name, type: page.type, period: result.period, image: result.image }
         
     }).filter(e => !!e)
-    res.json({ filteredPages })
+    res.json({ result: true, pages: filteredPages })
 
 })
 

@@ -300,4 +300,51 @@ router.get('/events', async (req, res) => {
 
 })
 
+// * Update User PP
+router.put('/pp', async (req, res) => {
+    const { token, newPpURI } = req.body
+    
+    // Error 400 : Missing or empty field(s)
+    if(!checkReq([token, newPpURI], res)) return
+
+    const user = await User.findOne({ token })
+    // Error 404 : Not found
+    if(!isFound('User', user, res)) return
+
+    user.ppURI = newPpURI
+
+    try {
+        await user.save()
+        res.json({ result: true, message: 'New pp saved'})
+    } catch (error) {
+        res.status(400)
+        res.json({ result: false, error })
+    }
+})
+
+// * Update User data
+router.put('/', async (req, res) => {
+    const { firstname, lastname, bio, token } = req.body
+
+    // Error 400 : Missing or empty field(s)
+    if(!checkReq([token], res)) return
+
+    const user = await User.findOne({ token })
+    // Error 404 : Not found
+    if(!isFound('User', user, res)) return
+
+    user.firstname = firstname
+    user.lastname = lastname
+    user.bio = bio
+
+    try {
+        await user.save()
+        res.json({ result: true, message: 'User updated'})
+    } catch (error) {
+        res.status(400)
+        res.json({ result: false, error })
+    }
+
+})
+
 module.exports = router

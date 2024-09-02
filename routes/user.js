@@ -347,4 +347,22 @@ router.put('/', async (req, res) => {
 
 })
 
+// * Get User data
+router.get('/', async (req, res) => {
+    const { token } = req.headers
+
+    // Error 400 : Missing or empty field(s)
+    if(!checkReq([token], res)) return
+
+    let user = await User.findOne({ token })
+    // Error 404 : Not found
+    if(!isFound('User', user, res)) return
+
+    const { firstname, lastname, bio } = user
+    user = { firstname, lastname, bio }
+
+    res.json({ result: true, user })
+
+})
+
 module.exports = router

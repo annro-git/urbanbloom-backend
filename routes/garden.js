@@ -9,7 +9,7 @@ const { parseLikes } = require('../helpers/parseLikes')
 
 // * Create a Garden
 router.post('/', async (req, res) => {
-
+    console.log(req.body)
     const { coordinates, name, description, token, interests, bonus, ppURI } = req.body
     // Error 400 : Missing or empty field(s)
     if(!checkReq([coordinates, name, description, token, interests, bonus ], res)) return
@@ -121,7 +121,6 @@ router.post('/name/', async (req, res) => {
 // * Create a Post
 router.post('/:gardenId/post/', async (req, res) => {
     const { gardenId } = req.params
-    console.log(req.body) // !
     const { token, title, text, pictures } = req.body
     // Error 400 : Missing or empty field(s)
     if(!checkReq([gardenId, token, title, text, pictures], res)) return
@@ -220,21 +219,22 @@ router.get('/:gardenId/post/:postId', async (req, res) => {
     await garden.populate('posts.replies.owner', ['username', '-_id'])
     await garden.populate('posts.likes.owner', ['username', '-_id'])
 
+    const { owner, createdAt, title, text, pictures, replies, likes, _id } = post
     post = {
-        owner: post.owner.username,
-        createdAt: post.createdAt,
-        title: post.title,
-        text: post.text,
-        pictures: post.pictures,
-        replies: post.replies.map(reply => {
+        createdAt,
+        title,
+        text,
+        pictures,
+        id: _id,
+        owner: owner.username,
+        likes: parseLikes(likes),
+        replies: replies.map(reply => {
             return({
                 owner: reply.owner.username,
                 createdAt: reply.createdAt,
-                text: reply.text,
+                text: reply.text
             })
-        }),
-        likes: parseLikes(post.likes),
-        pictures: post.pictures,
+        })
     }
 
     res.json({ result: true, post })
@@ -386,6 +386,7 @@ router.post('/:gardenId/event/', async (req, res) => {
         title,
         text,
         pictures,
+        createdAt: new Date(),
         date: new Date(date),
         subscribers: [user._id],
     }
@@ -706,6 +707,60 @@ router.delete('/:gardenId', async (req, res) => {
         res.json({ result: false, error })
     }
 
+})
+
+// * Get Garden Posts & Events
+router.get('/:gardenId', async (req, res) => {
+    const { gardenId } = req.params
+    const { token } = req.headers
+    // Error 400 : Missing or empty field(s)
+    if(!checkReq([gardenId, token], res)) return
+
+    const garden = await Garden.findOne({ _id: gardenId })
+    // Error 404 : Not found
+    if(!isFound('Garden', garden, res)) return
+
+    const user = await User.findOne({ token })
+    // Error 404 : Not found
+    if(!isFound('User', user, res)) return
+    // Error 403 : User is not an owner
+    if(!userCredential('members', user, garden, res)) return
+
+    await garden.populate('posts.owner', ['username', '-_id'])
+    await garden.populate('posts.likes.owner', ['username', '-_id'])
+    await garden.populate('events.owner', ['username', '-_id'])
+    await garden.populate('events.subscribers', ['username', '-_id'])
+    let { posts, events } = garden
+
+    posts = posts.map(post => {
+        const { createdAt, title, text, owner, pictures, _id, likes, replies } = post
+        return ({
+            createdAt,
+            title,
+            text,
+            pictures,
+            id: _id,
+            likes: parseLikes(likes),
+            repliesCount: replies.length,
+            owner: owner.username
+        })
+    })
+
+    events = events.map(event => {
+        const { createdAt, date, title, text, owner, pictures, subscribers, _id } = event
+        return ({
+            createdAt,
+            date,
+            title,
+            text,
+            pictures,
+            id: _id,
+            owner: owner.username,
+            subscribers: subscribers.map(subscriber => subscriber.username)
+        })
+    })
+
+    res.json({ result: true, posts, events })
 })
 
 module.exports = router

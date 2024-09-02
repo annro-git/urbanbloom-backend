@@ -131,7 +131,7 @@ const GardenSchema = mongoose.Schema({
     description: {
         type: String,
         required: [true, 'Missing description'],
-        maxlength: 300,
+        maxlength: 500,
     },
     posts: [PostSchema],
     events: [EventSchema],

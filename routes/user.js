@@ -365,4 +365,42 @@ router.get('/', async (req, res) => {
 
 })
 
+// * Get User Gardens last posts
+router.get('/lastposts', async (req, res) => {
+    const { token, limit } = req.headers
+
+    // Error 400 : Missing or empty field(s)
+    if(!checkReq([token, limit], res)) return
+
+    let user = await User.findOne({ token })
+    // Error 404 : Not found
+    if(!isFound('User', user, res)) return
+
+    let lastPosts = []
+    await user.populate('gardens')
+    await user.populate('gardens.posts.owner')
+    user.gardens.forEach(garden => {
+        garden.posts.forEach(post => {
+            lastPosts.push({
+                id: post._id,
+                from: {
+                    garden: {
+                        id: garden._id,
+                        name: garden.name,
+                    },
+                    owner: post.owner.username,
+                },
+                createdAt: post.createdAt,
+                title: post.title,
+            })
+        })
+    })
+
+    lastPosts = lastPosts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .filter((post, index) => index < limit)
+
+    res.json({ result: true, lastPosts })
+
+})
+
 module.exports = router

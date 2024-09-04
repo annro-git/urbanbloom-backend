@@ -7,12 +7,12 @@ const PageSchema = mongoose.Schema({
         enum: ['fruit', 'vegetable', 'flower']
     },
     sow: {
-        start: Date,
-        end: Date,
+        start: Number,
+        end: Number,
     },
     harvest: {
-        start: Date,
-        end: Date,
+        start: Number,
+        end: Number,
     },
     image: String,
     test: String,

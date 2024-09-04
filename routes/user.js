@@ -389,50 +389,111 @@ router.get('/events', async (req, res) => {
         })
     })
 
-    res.json({ result: true, events })
+    res.json({ result: true, events})
 
-});
+})
 
-// * Get User Posts
-router.get('/posts', async (req, res) => {
+// * Update User PP
+router.put('/pp', async (req, res) => {
+    const { token, newPpURI } = req.body
+    
+    // Error 400 : Missing or empty field(s)
+    if(!checkReq([token, newPpURI], res)) return
+
+    const user = await User.findOne({ token })
+    // Error 404 : Not found
+    if(!isFound('User', user, res)) return
+
+    user.ppURI = newPpURI
+
+    try {
+        await user.save()
+        res.json({ result: true, message: 'New pp saved'})
+    } catch (error) {
+        res.status(400)
+        res.json({ result: false, error })
+    }
+})
+
+// * Update User data
+router.put('/', async (req, res) => {
+    const { firstname, lastname, bio, token } = req.body
+
+    // Error 400 : Missing or empty field(s)
+    if(!checkReq([token], res)) return
+
+    const user = await User.findOne({ token })
+    // Error 404 : Not found
+    if(!isFound('User', user, res)) return
+
+    user.firstname = firstname
+    user.lastname = lastname
+    user.bio = bio
+
+    try {
+        await user.save()
+        res.json({ result: true, message: 'User updated'})
+    } catch (error) {
+        res.status(400)
+        res.json({ result: false, error })
+    }
+
+})
+
+// * Get User data
+router.get('/', async (req, res) => {
     const { token } = req.headers
 
     // Error 400 : Missing or empty field(s)
-    if (!checkReq([token], res)) return
+    if(!checkReq([token], res)) return
 
-    const user = await User({ token })
+    let user = await User.findOne({ token })
     // Error 404 : Not found
-    if (!isFound('User', user, res)) return
+    if(!isFound('User', user, res)) return
 
+    const { firstname, lastname, bio } = user
+    user = { firstname, lastname, bio }
+
+    res.json({ result: true, user })
+
+})
+
+// * Get User Gardens last posts
+router.get('/lastposts', async (req, res) => {
+    const { token, limit } = req.headers
+
+    // Error 400 : Missing or empty field(s)
+    if(!checkReq([token, limit], res)) return
+
+    let user = await User.findOne({ token })
+    // Error 404 : Not found
+    if(!isFound('User', user, res)) return
+
+    let lastPosts = []
     await user.populate('gardens')
+    await user.populate('gardens.posts.owner')
+    user.gardens.forEach(garden => {
+        garden.posts.forEach(post => {
+            lastPosts.push({
+                id: post._id,
+                from: {
+                    garden: {
+                        id: garden._id,
+                        name: garden.name,
+                    },
+                    owner: post.owner.username,
+                },
+                createdAt: post.createdAt,
+                title: post.title,
+            })
+        })
+    })
 
-    const posts = [];
+    lastPosts = lastPosts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .filter((post, index) => index < limit)
 
-    const addPosts = async () => {
-        for (const garden of user.gardens) {
-            for (const post of garden.posts) {
-                if (String(post.owner) === String(user._id)) {
-                    await post.replies.populate('owner');
-                    await post.populate('owner');
+    res.json({ result: true, lastPosts })
 
-                    posts.push({
-                        id: post._id,
-                        owner: post.owner,
-                        title: post.title,
-                        content: post.content,
-                        gardenId: garden._id,
-                        gardenName: garden.name,
-                        likes: post.likes,
-                        replies: post.replies
-                    });
-                }
-            }
-        }
-    };
-
-    await addPosts();
-
-    res.json({ result: true, posts })
-});
+})
 
 module.exports = router

@@ -136,10 +136,12 @@ router.post('/:gardenId/post/', async (req, res) => {
     if(!userCredential('members', user, garden, res)) return
 
     const newPost = {
+        _id: new mongoose.Types.ObjectId(),
         owner: user._id,
         title,
         text,
         pictures,
+        createAt: new Date(),
     }
 
     garden.posts.push(newPost)
@@ -147,7 +149,7 @@ router.post('/:gardenId/post/', async (req, res) => {
     try {
         await garden.save()
         res.status(201)
-        res.json({ result: true, message: 'Post created'})
+        res.json({ result: true, message: 'Post created', id: newPost._id})
     } catch (error) {
         res.status(400)
         res.json({ result: false, error })
@@ -760,7 +762,15 @@ router.get('/:gardenId', async (req, res) => {
         })
     })
 
-    res.json({ result: true, posts, events })
+    const data = {
+        name: garden.name,
+        id: garden._id,
+        description: garden.description,
+        members: garden.members.length,
+        ppURI: garden.ppURI
+    }
+
+    res.json({ result: true, posts, events, garden: data })
 })
 
 module.exports = router

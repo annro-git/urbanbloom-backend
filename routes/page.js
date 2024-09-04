@@ -26,12 +26,12 @@ router.get('/', async (req, res) => {
         name,
         type,
         sow: {
-            from: new Date(sow.start).getMonth(),
-            to: new Date(sow.end).getMonth(),
+            from: sow.start,
+            to: sow.end,
         },
         harvest: {
-            from: new Date(harvest.start).getMonth(),
-            to: new Date(harvest.end).getMonth()
+            from: harvest.start,
+            to: harvest.end
         },
         image,
         text,
@@ -80,41 +80,41 @@ router.get('/current/', async (req, res) => {
     // Error 404 : Not found
     if(!isFound('User', user, res)) return
 
-    const pages = await Page.find({})
+    let pages = await Page.find({})
 
-    const filteredPages = pages.map(page => {
-        let result = { period: [] }
-        const currentMonth = Number(month)
-        const nextYearCurrentMonth = currentMonth+12
-        const sowStart = new Date(page.sow.start).getMonth()
-        const sowEnd = new Date(page.sow.end).getMonth()
-        const harvestStart = new Date(page.harvest.start).getMonth()
-        const harvestEnd = new Date(page.harvest.end).getMonth()
-
-        if((sowEnd >= sowStart) && (currentMonth >= sowStart && currentMonth <= sowEnd)){
-            result.period.push('sow')
+    pages = pages.map(page => {
+        const mm = Number(month) + 1
+        if (mm > page.sow.start && mm <= page.sow.end) {
+            return ({
+                timeTo: 'sow',
+                name: page.name,
+                image: page.image,
+                type: page.type
+            })
+        } else if (mm > page.harvest.start && mm <= page.harvest.end) {
+            return ({
+                timeTo: 'harvest',
+                name: page.name,
+                image: page.image,
+                type: page.type,
+            })
         }
+    }).filter(page => page)
 
-        if((sowEnd < sowStart) && (nextYearCurrentMonth >= sowStart && nextYearCurrentMonth <= sowEnd)){
-            result.period.push('sow')
+    let sortedPages = {
+        sow: {
+            fruit: pages.filter(page => page.timeTo === 'sow' && page.type === 'fruit'),
+            vegetable: pages.filter(page => page.timeTo === 'sow' && page.type === 'vegetable'),
+            flower: pages.filter(page => page.timeTo === 'sow' && page.type === 'flower'),
+        },
+        harvest: {
+            fruit: pages.filter(page => page.timeTo === 'harvest' && page.type === 'fruit'),
+            vegetable: pages.filter(page => page.timeTo === 'harvest' && page.type === 'vegetable'),
+            flower: pages.filter(page => page.timeTo === 'harvest' && page.type === 'flower'),
         }
+    }
 
-        if((harvestEnd >= harvestStart) && (currentMonth >= harvestStart && currentMonth <= harvestEnd)){
-            result.period.push('harvest')
-        }
-
-        if((harvestEnd < harvestStart) && (nextYearCurrentMonth >= harvestStart && nextYearCurrentMonth <= harvestEnd)){
-            result.period.push('harvest')
-        }
-
-        if(result.period.length === 0){
-            return
-        }
-
-        return { name: page.name, type: page.type, period: result.period, image: result.image }
-        
-    }).filter(e => !!e)
-    res.json({ result: true, pages: filteredPages })
+    res.json({ result: true, pages: sortedPages })
 
 })
 

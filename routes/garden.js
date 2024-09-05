@@ -30,6 +30,7 @@ router.post('/', async (req, res) => {
         members,
         filters,
         ppURI,
+        createdAt: new Date(),
     })
 
     try {

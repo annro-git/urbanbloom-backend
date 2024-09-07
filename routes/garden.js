@@ -471,9 +471,7 @@ router.put("/:gardenId/event/:eventId", async (req, res) => {
             // user is garden owner or event owner
             if (event.subscribers.find((subscriber) => String(subscriber._id) === String(target._id))) {
                 // owners only allowed to remove
-                event.subscribers = event.subscribers.filter(
-                    (subscriber) => String(subscriber._id) !== String(target._id)
-                );
+                event.subscribers = event.subscribers.filter((subscriber) => String(subscriber._id) !== String(target._id));
                 res.json(await save(`${target.username} removed`));
                 return;
             }

@@ -1,51 +1,54 @@
-const mongoose = require('mongoose')
+const mongoose = require("mongoose");
 
 const UserSchema = mongoose.Schema({
     email: {
         type: String,
-        required: [true, 'Missing email'],
+        required: [true, "Missing email"],
         lowercase: true,
         validate: {
             validator: (value) => /\S+@\S+\.\S+/.test(value),
-            message: 'Invalid email'
-        }
+            message: "Invalid email",
+        },
     },
     username: {
         type: String,
-        required: [true, 'Missing username'],
+        required: [true, "Missing username"],
     },
     password: {
         type: String,
-        required: [true, 'Missing password']
+        required: [true, "Missing password"],
     },
     token: {
         type: String,
-        required: [true, 'Missing token'],
+        required: [true, "Missing token"],
         minlength: 32,
-        maxlength: 32
+        maxlength: 32,
     },
     ppURI: {
         type: String,
         lowercase: true,
         validate: {
-            validator: (value) => /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/.test(value),
-            message: 'Invalid profile picture uri'
+            validator: (value) =>
+                /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/.test(
+                    value
+                ),
+            message: "Invalid profile picture uri",
         },
-        default: 'https://i0.wp.com/www.stignatius.co.uk/wp-content/uploads/2020/10/default-user-icon.jpg' // TODO : replace placeholder
+        default: "https://i0.wp.com/www.stignatius.co.uk/wp-content/uploads/2020/10/default-user-icon.jpg", // TODO : replace placeholder
     },
     gardens: {
         type: Array,
         of: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'gardens'
-        }
+            ref: "gardens",
+        },
     },
     events: {
         type: Array,
         of: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'events'
-        }
+            ref: "events",
+        },
     },
     bio: {
         type: String,
@@ -60,6 +63,6 @@ const UserSchema = mongoose.Schema({
     },
     firstname: String,
     lastname: String,
-})
-const User = mongoose.model('users', UserSchema)
-module.exports = User
+});
+const User = mongoose.model("users", UserSchema);
+module.exports = User;

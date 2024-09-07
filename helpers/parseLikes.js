@@ -1,16 +1,16 @@
 const parseLikes = (likes) => {
-    const result = {}
+    const result = {};
 
-    likes.forEach(like => {
-        if(!result[like.likeType]){
-            result[like.likeType] = []
-            result[like.likeType].push(like.owner.username)
-            return
+    likes.forEach((like) => {
+        if (!result[like.likeType]) {
+            result[like.likeType] = [];
+            result[like.likeType].push(like.owner.username);
+            return;
         }
-        result[like.likeType].push(like.owner.username)
-    })
+        result[like.likeType].push(like.owner.username);
+    });
 
-    return result
-}
+    return result;
+};
 
-module.exports = { parseLikes }
+module.exports = { parseLikes };

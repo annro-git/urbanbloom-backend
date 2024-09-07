@@ -1,10 +1,10 @@
-const mongoose = require('mongoose')
+const mongoose = require("mongoose");
 
 const PageSchema = mongoose.Schema({
     name: String,
     type: {
         type: String,
-        enum: ['fruit', 'vegetable', 'flower']
+        enum: ["fruit", "vegetable", "flower"],
     },
     sow: {
         start: Number,
@@ -16,7 +16,7 @@ const PageSchema = mongoose.Schema({
     },
     image: String,
     text: String,
-})
+});
 
-const Page = mongoose.model('pages', PageSchema)
-module.exports = Page
+const Page = mongoose.model("pages", PageSchema);
+module.exports = Page;

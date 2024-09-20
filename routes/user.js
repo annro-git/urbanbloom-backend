@@ -3,8 +3,8 @@ const express = require("express");
 const uid2 = require("uid2");
 const router = express.Router();
 const bcrypt = require("bcrypt");
-const User = require("../models/users.js");
-const Garden = require("../models/gardens.js");
+const User = require("../models/users");
+const Garden = require("../models/gardens");
 // const Event = require('../models/gardens.js')
 
 const { checkReq, isFound } = require("../helpers/errorHandlers.js");
